@@ -8,6 +8,12 @@ class ApiService {
   final String baseUrl = AppConstants.apiUrl;
   String? _token;
 
+  // ============================================================
+  // 🔹 BASE DE DATOS LOCAL (SIMULADA)
+  // ============================================================
+  static final List<Usuario> _usuariosLocales = [];
+  static final List<Reporte> _reportesLocales = [];
+
   void setToken(String token) {
     _token = token;
   }
@@ -20,32 +26,40 @@ class ApiService {
     };
   }
 
-  // USUARIOS
+  // ============================================================
+  // 👤 USUARIOS (MOCK)
+  // ============================================================
+
   Future<Usuario> getUsuario(String id) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/usuarios/$id'),
-      headers: _getHeaders(),
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final usuario = _usuariosLocales.firstWhere(
+      (u) => u.id == id,
+      orElse: () => Usuario(
+        id: id,
+        nombre: 'Usuario de Prueba',
+        email: 'test@warda.com',
+        telefono: '999999999',
+        contactosEmergencia: [],
+        notificacionesActivas: true,
+        ubicacionCompartida: true,
+      ),
     );
 
-    if (response.statusCode == 200) {
-      return Usuario.fromMap(json.decode(response.body));
-    } else {
-      throw Exception('Error al cargar usuario: ${response.statusCode}');
-    }
+    return usuario;
   }
 
   Future<Usuario> actualizarUsuario(Usuario usuario) async {
-    final response = await http.put(
-      Uri.parse('$baseUrl/usuarios/${usuario.id}'),
-      headers: _getHeaders(),
-      body: json.encode(usuario.toMap()),
-    );
+    await Future.delayed(const Duration(milliseconds: 300));
 
-    if (response.statusCode == 200) {
-      return Usuario.fromMap(json.decode(response.body));
+    final index = _usuariosLocales.indexWhere((u) => u.id == usuario.id);
+    if (index != -1) {
+      _usuariosLocales[index] = usuario;
     } else {
-      throw Exception('Error al actualizar usuario: ${response.statusCode}');
+      _usuariosLocales.add(usuario);
     }
+
+    return usuario;
   }
 
   Future<Usuario> agregarContactoEmergencia(
@@ -54,63 +68,189 @@ class ApiService {
     String telefono,
     String relacion,
   ) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/usuarios/$usuarioId/contactos'),
-      headers: _getHeaders(),
-      body: json.encode({
-        'nombre': nombre,
-        'telefono': telefono,
-        'relacion': relacion,
-      }),
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    Usuario usuario;
+    final existing = _usuariosLocales.firstWhere(
+      (u) => u.id == usuarioId,
+      orElse: () => Usuario(
+        id: usuarioId,
+        nombre: 'Usuario',
+        email: 'usuario@warda.com',
+        telefono: '999999999',
+        contactosEmergencia: [],
+        notificacionesActivas: true,
+        ubicacionCompartida: true,
+      ),
     );
 
-    if (response.statusCode == 200) {
-      return Usuario.fromMap(json.decode(response.body));
-    } else {
-      throw Exception('Error al agregar contacto: ${response.statusCode}');
+    if (!_usuariosLocales.any((u) => u.id == usuarioId)) {
+      _usuariosLocales.add(existing);
     }
+
+    final nuevoContacto = ContactoEmergencia(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      nombre: nombre.trim(),
+      telefono: telefono.trim(),
+      relacion: relacion.trim(),
+    );
+
+    final usuarioActualizado = existing.copyWith(
+      contactosEmergencia: [...existing.contactosEmergencia, nuevoContacto],
+    );
+
+    final index = _usuariosLocales.indexWhere((u) => u.id == usuarioId);
+    if (index != -1) {
+      _usuariosLocales[index] = usuarioActualizado;
+    } else {
+      _usuariosLocales.add(usuarioActualizado);
+    }
+
+    return usuarioActualizado;
   }
 
-  // REPORTES
-  Future<List<Reporte>> getReportes(String usuarioId) async {
-    final response = await http.get(
-      Uri.parse('$baseUrl/reportes?usuarioId=$usuarioId'),
-      headers: _getHeaders(),
-    );
+  // ============================================================
+  // 📋 REPORTES (MOCK)
+  // ============================================================
 
-    if (response.statusCode == 200) {
-      final List<dynamic> data = json.decode(response.body);
-      return data.map((item) => Reporte.fromMap(item)).toList();
-    } else {
-      throw Exception('Error al cargar reportes: ${response.statusCode}');
+  Future<List<Reporte>> getReportes(String usuarioId) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    if (_reportesLocales.isEmpty) {
+      _agregarReportesPrueba(usuarioId);
     }
+
+    return _reportesLocales
+        .where((r) => r.usuarioId == usuarioId)
+        .toList();
   }
 
   Future<Reporte> crearReporte(Reporte reporte) async {
-    final response = await http.post(
-      Uri.parse('$baseUrl/reportes'),
-      headers: _getHeaders(),
-      body: json.encode(reporte.toMap()),
+    await Future.delayed(const Duration(milliseconds: 800));
+
+    final nuevoReporte = Reporte(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      titulo: reporte.titulo,
+      descripcion: reporte.descripcion,
+      tipo: reporte.tipo,
+      estado: 'pendiente',
+      fecha: DateTime.now(),
+      ubicacion: reporte.ubicacion,
+      latitud: reporte.latitud,
+      longitud: reporte.longitud,
+      imagenes: reporte.imagenes,
+      usuarioId: reporte.usuarioId,
     );
 
-    if (response.statusCode == 201 || response.statusCode == 200) {
-      return Reporte.fromMap(json.decode(response.body));
-    } else {
-      throw Exception('Error al crear reporte: ${response.statusCode}');
-    }
+    _reportesLocales.add(nuevoReporte);
+    return nuevoReporte;
   }
 
   Future<Reporte> actualizarReporte(String id, Map<String, dynamic> data) async {
-    final response = await http.patch(
-      Uri.parse('$baseUrl/reportes/$id'),
-      headers: _getHeaders(),
-      body: json.encode(data),
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final index = _reportesLocales.indexWhere((r) => r.id == id);
+    if (index == -1) {
+      throw Exception('Reporte no encontrado');
+    }
+
+    final reporte = _reportesLocales[index];
+    final actualizado = Reporte(
+      id: reporte.id,
+      titulo: data['titulo'] ?? reporte.titulo,
+      descripcion: data['descripcion'] ?? reporte.descripcion,
+      tipo: data['tipo'] ?? reporte.tipo,
+      estado: data['estado'] ?? reporte.estado,
+      fecha: reporte.fecha,
+      ubicacion: data['ubicacion'] ?? reporte.ubicacion,
+      latitud: data['latitud'] ?? reporte.latitud,
+      longitud: data['longitud'] ?? reporte.longitud,
+      imagenes: data['imagenes'] ?? reporte.imagenes,
+      usuarioId: reporte.usuarioId,
     );
 
-    if (response.statusCode == 200) {
-      return Reporte.fromMap(json.decode(response.body));
-    } else {
-      throw Exception('Error al actualizar reporte: ${response.statusCode}');
+    _reportesLocales[index] = actualizado;
+    return actualizado;
+  }
+
+  // ============================================================
+  // 🗑️ ELIMINAR REPORTE (CORREGIDO)
+  // ============================================================
+  Future<bool> eliminarReporte(String id) async {
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    // Buscar el índice del reporte
+    final index = _reportesLocales.indexWhere((r) => r.id == id);
+    if (index != -1) {
+      _reportesLocales.removeAt(index);
+      return true; // ✅ Se eliminó correctamente
     }
+    return false; // ❌ No se encontró el reporte
+  }
+
+  // ============================================================
+  // 🧪 DATOS DE PRUEBA
+  // ============================================================
+
+  void _agregarReportesPrueba(String usuarioId) {
+    if (_reportesLocales.isNotEmpty) return;
+
+    final reportes = [
+      Reporte(
+        id: '1',
+        titulo: 'Robo en tienda',
+        descripcion: 'Dos sujetos armados robaron la tienda de la esquina',
+        tipo: 'Robo',
+        estado: 'pendiente',
+        fecha: DateTime.now().subtract(const Duration(hours: 2)),
+        ubicacion: 'Av. Principal 123',
+        latitud: -12.0734,
+        longitud: -77.1217,
+        usuarioId: usuarioId,
+      ),
+      Reporte(
+        id: '2',
+        titulo: 'Accidente de tránsito',
+        descripcion: 'Choque entre dos autos en el cruce',
+        tipo: 'Accidente',
+        estado: 'en_proceso',
+        fecha: DateTime.now().subtract(const Duration(hours: 5)),
+        ubicacion: 'Calle Los Pinos 456',
+        latitud: -12.0800,
+        longitud: -77.1150,
+        usuarioId: usuarioId,
+      ),
+      Reporte(
+        id: '3',
+        titulo: 'Vandalismo en parque',
+        descripcion: 'Destrucción de mobiliario urbano',
+        tipo: 'Vandalismo',
+        estado: 'resuelto',
+        fecha: DateTime.now().subtract(const Duration(days: 1)),
+        ubicacion: 'Parque Central',
+        latitud: -12.0650,
+        longitud: -77.1300,
+        usuarioId: usuarioId,
+      ),
+    ];
+
+    _reportesLocales.addAll(reportes);
+  }
+
+  // ============================================================
+  // 🧹 LIMPIAR DATOS (para pruebas)
+  // ============================================================
+
+  void limpiarReportes() {
+    _reportesLocales.clear();
+  }
+
+  void limpiarUsuarios() {
+    _usuariosLocales.clear();
+  }
+
+  void limpiarTodo() {
+    _reportesLocales.clear();
+    _usuariosLocales.clear();
   }
 }

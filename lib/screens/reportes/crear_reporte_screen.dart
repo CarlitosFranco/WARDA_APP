@@ -9,7 +9,6 @@ import 'package:warda/utils/constants.dart';
 import 'package:warda/utils/helpers.dart';
 import 'dart:async';
 
-
 class CrearReporteScreen extends StatefulWidget {
   const CrearReporteScreen({super.key});
 
@@ -21,8 +20,10 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
   final _descripcionController = TextEditingController();
+  final _ubicacionController = TextEditingController();
   String? _tipoSeleccionado;
-  String? _ubicacion;
+  double? _latitud;
+  double? _longitud;
   bool _isLoading = false;
 
   @override
@@ -32,6 +33,8 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Crear Reporte'),
+        backgroundColor: Colors.orange.shade700,
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -114,33 +117,57 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 },
               ),
               const SizedBox(height: 16),
-              // Ubicación
+              // Ubicación (dirección + coordenadas)
               Row(
                 children: [
                   Expanded(
+                    flex: 3,
                     child: CustomTextField(
-                      label: 'Ubicación',
-                      hint: 'Ingresa la ubicación',
-                      controller: TextEditingController(text: _ubicacion),
-                      enabled: false,
+                      label: 'Ubicación (dirección)',
+                      hint: 'Ej: Av. Principal 123',
+                      controller: _ubicacionController,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Column(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          // TODO: Abrir mapa para seleccionar ubicación
-                          Helpers.showSnackBar(context, 'Selecciona ubicación en el mapa');
-                        },
-                        icon: const Icon(Icons.map),
-                        color: theme.colorScheme.primary,
-                      ),
-                      const Text(
-                        'Mapa',
-                        style: TextStyle(fontSize: 10),
-                      ),
-                    ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 1,
+                    child: Column(
+                      children: [
+                        IconButton(
+                          onPressed: _seleccionarUbicacionEnMapa,
+                          icon: const Icon(Icons.map),
+                          color: Colors.green,
+                          tooltip: 'Seleccionar en el mapa',
+                        ),
+                        const Text(
+                          'Mapa',
+                          style: TextStyle(fontSize: 10),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              // Mostrar latitud y longitud (informativas)
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _latitud != null
+                          ? '📌 Lat: ${_latitud!.toStringAsFixed(6)}'
+                          : '📍 Sin coordenadas',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _longitud != null
+                          ? '📌 Lng: ${_longitud!.toStringAsFixed(6)}'
+                          : '',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
                   ),
                 ],
               ),
@@ -161,7 +188,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                   Expanded(
                     child: CustomButton(
                       text: 'Enviar reporte',
-                      onPressed: _isLoading ? null :() {_crearReporte ();},
+                      onPressed: _isLoading ? null : _crearReporte,
                       isLoading: _isLoading,
                     ),
                   ),
@@ -174,13 +201,60 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
     );
   }
 
+  // ============================================================
+  // 🗺️ ABRIR MAPA PARA SELECCIONAR UBICACIÓN
+  // ============================================================
+  Future<void> _seleccionarUbicacionEnMapa() async {
+    // Navegar al mapa en modo selección
+    final resultado = await Navigator.pushNamed(
+      context,
+      '/mapa',
+      arguments: true, // Activa modo selección
+    );
+
+    if (resultado != null && resultado is Map<String, double>) {
+      setState(() {
+        _latitud = resultado['latitud'];
+        _longitud = resultado['longitud'];
+        // Opcional: puedes usar geocodificación inversa para obtener dirección
+        // Por ahora, dejamos que el usuario escriba la dirección manualmente
+        _ubicacionController.text =
+            'Ubicación seleccionada (${_latitud!.toStringAsFixed(4)}, ${_longitud!.toStringAsFixed(4)})';
+      });
+      Helpers.showSnackBar(
+        context,
+        '📍 Ubicación seleccionada correctamente',
+        color: Colors.green,
+      );
+    }
+  }
+
+  // ============================================================
+  // 📤 CREAR REPORTE
+  // ============================================================
   Future<void> _crearReporte() async {
-    if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    // Validar coordenadas (opcional pero recomendado)
+    if (_latitud == null || _longitud == null) {
+      Helpers.showSnackBar(
+        context,
+        '⚠️ Debes seleccionar una ubicación en el mapa',
+        color: Colors.orange,
+      );
+      return;
+    }
 
     setState(() => _isLoading = true);
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reporteProvider = Provider.of<ReporteProvider>(context, listen: false);
+
+    // Obtener ID del usuario (con fallback a invitado)
+    final usuarioId = authProvider.usuarioActual?.id ??
+        'invitado_${DateTime.now().millisecondsSinceEpoch}';
 
     final reporte = Reporte(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
@@ -189,8 +263,13 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
       tipo: _tipoSeleccionado!,
       estado: 'pendiente',
       fecha: DateTime.now(),
-      ubicacion: _ubicacion,
-      usuarioId: authProvider.usuarioActual!.id,
+      ubicacion: _ubicacionController.text.trim().isEmpty
+          ? 'Ubicación seleccionada'
+          : _ubicacionController.text.trim(),
+      latitud: _latitud,
+      longitud: _longitud,
+      imagenes: null,
+      usuarioId: usuarioId,
     );
 
     final success = await reporteProvider.crearReporte(reporte);
@@ -221,6 +300,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   void dispose() {
     _tituloController.dispose();
     _descripcionController.dispose();
+    _ubicacionController.dispose();
     super.dispose();
   }
 }

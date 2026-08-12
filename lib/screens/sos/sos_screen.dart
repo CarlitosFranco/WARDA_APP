@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:warda/services/location_service.dart';
+import 'package:warda/providers/usuario_provider.dart';
 import 'package:warda/utils/helpers.dart';
 import 'package:warda/widgets/custom_button.dart';
-
 
 class SosScreen extends StatefulWidget {
   const SosScreen({super.key});
@@ -15,7 +17,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
   bool _isSosActivated = false;
-  //**final LocationService _locationService = LocationService();
 
   @override
   void initState() {
@@ -24,7 +25,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(
         parent: _animationController,
@@ -61,7 +62,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Instrucciones
                 Text(
                   '¡ACTIVA EL BOTÓN DE EMERGENCIA!',
                   style: theme.textTheme.headlineSmall?.copyWith(
@@ -79,7 +79,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 50),
-                // Botón SOS animado
                 GestureDetector(
                   onTap: _activarSos,
                   child: AnimatedBuilder(
@@ -128,7 +127,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                   ),
                 ),
                 const SizedBox(height: 40),
-                // Estado
                 if (_isSosActivated) ...[
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -166,7 +164,6 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                   ),
                 ],
                 const SizedBox(height: 20),
-                // Mensaje informativo
                 if (!_isSosActivated)
                   Text(
                     'Solo usa esta función en caso de EMERGENCIA REAL',
@@ -184,19 +181,81 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     );
   }
 
-  Future<void> _activarSos() async {
-    setState(() => _isSosActivated = true);
+  // ============================================================
+  // 📤 ENVIAR ALERTA A CONTACTOS
+  // ============================================================
+  Future<void> _enviarAlertaContactos(double lat, double lng) async {
+    final usuarioProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    final contactos = usuarioProvider.getContactos();
 
-    // Solicitar ubicación
-    final position = await LocationService.getCurrentLocation();    
-    if (position != null) {
-      // TODO: Enviar alerta a contactos con ubicación
-      print('📍 Ubicación: ${position.latitude}, ${position.longitude}');
-      
+    if (contactos.isEmpty) {
       if (mounted) {
         Helpers.showSnackBar(
           context,
-          '📍 SOS activado! Contactos notificados',
+          '⚠️ No tienes contactos de emergencia. Agrega uno en "Contactos"',
+          color: Colors.orange,
+        );
+      }
+      return;
+    }
+
+    final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
+    final mensaje = '🚨 ¡EMERGENCIA! Necesito ayuda. Mi ubicación actual es: $mapsUrl';
+
+    for (var contacto in contactos) {
+      final telefono = contacto.telefono.replaceAll(RegExp(r'[^0-9]'), '');
+      final whatsappUrl = 'https://wa.me/51$telefono?text=${Uri.encodeComponent(mensaje)}';
+
+      try {
+        if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
+          await launchUrl(Uri.parse(whatsappUrl));
+          break; // Si se abre WhatsApp, no abrir SMS para el mismo contacto
+        } else {
+          final smsUrl = 'sms:$telefono?body=${Uri.encodeComponent(mensaje)}';
+          if (await canLaunchUrl(Uri.parse(smsUrl))) {
+            await launchUrl(Uri.parse(smsUrl));
+          } else {
+            if (mounted) {
+              Helpers.showSnackBar(
+                context,
+                '❌ No se puede enviar mensaje a ${contacto.nombre}',
+                color: Colors.red,
+              );
+            }
+          }
+        }
+      } catch (e) {
+        print('Error enviando alerta a ${contacto.nombre}: $e');
+        if (mounted) {
+          Helpers.showSnackBar(
+            context,
+            '❌ Error al enviar alerta a ${contacto.nombre}',
+            color: Colors.red,
+          );
+        }
+      }
+    }
+  }
+
+  // ============================================================
+  // 🔴 ACTIVAR SOS
+  // ============================================================
+  Future<void> _activarSos() async {
+    setState(() => _isSosActivated = true);
+
+    final position = await LocationService.getCurrentLocation();
+
+    if (position != null) {
+      final lat = position.latitude;
+      final lng = position.longitude;
+      print('📍 Ubicación: $lat, $lng');
+
+      await _enviarAlertaContactos(lat, lng);
+
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '📨 Alertas enviadas a tus contactos de emergencia',
           color: Colors.green,
         );
       }
@@ -204,13 +263,16 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
       if (mounted) {
         Helpers.showSnackBar(
           context,
-          '⚠️ No se pudo obtener la ubicación',
+          '⚠️ No se pudo obtener la ubicación. Verifica tu GPS y permisos.',
           color: Colors.orange,
         );
       }
     }
   }
 
+  // ============================================================
+  // ⏹️ DESACTIVAR SOS
+  // ============================================================
   void _desactivarSos() {
     setState(() => _isSosActivated = false);
     Helpers.showSnackBar(

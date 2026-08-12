@@ -12,34 +12,30 @@ dependencies:
 
   # UI
   cupertino_icons: ^1.0.6
-  
+
   # Estado
   provider: ^6.1.1
-  
+
   # Almacenamiento
   shared_preferences: ^2.2.3
-  sqflite: ^2.3.3          
-  path_provider: ^2.1.2    
-  path: ^1.9.0             
-  
+  sqflite: ^2.3.3
+  path_provider: ^2.1.2
+  path: ^1.9.0
+
   # Networking
   http: ^1.1.0
-  
+
   # Utilidades
   intl: ^0.18.1
 
   # ========== MAPAS Y GEOLOCALIZACIÓN ==========
-  # 🗺️ OpenStreetMap para Flutter
-  flutter_map: ^6.1.0     # Versión estable que funciona con los demás
-  
-  # 📍 Coordenadas (latitud/longitud)
-  latlong2: ^0.9.1
-  
-  # 📱 Geolocalización del dispositivo
-  geolocator: ^13.0.1
-  
-  # 🔐 Permisos (cámara, ubicación, etc.)
-  permission_handler: ^11.3.1
+  flutter_map: ^6.2.1          # OpenStreetMap para Flutter
+  latlong2: ^0.9.1             # Coordenadas (latitud/longitud)
+  geolocator: ^13.0.1          # Geolocalización del dispositivo
+  permission_handler: ^11.3.1  # Permisos de ubicación
+
+  # ========== ENVÍO DE ALERTAS ==========
+  url_launcher: ^6.2.5         # Para abrir WhatsApp / SMS
 
 dev_dependencies:
   flutter_test:
@@ -48,6 +44,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
-  
+
   assets:
     - assets/images/
