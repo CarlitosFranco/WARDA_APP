@@ -8,7 +8,9 @@ import 'package:warda/utils/helpers.dart';
 import 'package:warda/screens/reportes/reportes_screen.dart';
 import 'package:warda/screens/sos/sos_screen.dart';
 import 'package:warda/screens/perfil/perfil_screen.dart';
-import 'package:warda/screens/mapa/mapa_screen.dart'; // ✅ NUEVA IMPORTACIÓN
+// ✅ NUEVAS IMPORTACIONES
+import 'package:warda/screens/extorsion/extorsion_screen.dart';
+import 'package:warda/screens/bienestar_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -79,7 +81,24 @@ class HomeContent extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('WARDA'),
+        // ✅ LOGO EN EL APPBAR (en lugar del texto "WARDA")
+        title: SizedBox(
+          height: 40,
+          child: Image.asset(
+            'assets/images/logo.png',
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stackTrace) {
+              return const Text(
+                'WARDA',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 2,
+                ),
+              );
+            },
+          ),
+        ),
+        centerTitle: false,
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -89,7 +108,7 @@ class HomeContent extends StatelessWidget {
           ),
         ],
       ),
-      body: SingleChildScrollView( // ✅ Envuelto en SingleChildScrollView
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -109,7 +128,7 @@ class HomeContent extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // Acciones rápidas
             GridView.count(
               shrinkWrap: true,
@@ -118,7 +137,7 @@ class HomeContent extends StatelessWidget {
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
               children: [
-                // ✅ MAPA AHORA NAVEGA A LA PANTALLA DEL MAPA
+                // 🗺️ MAPA
                 _buildQuickAction(
                   context,
                   icon: Icons.map_outlined,
@@ -126,6 +145,7 @@ class HomeContent extends StatelessWidget {
                   color: Colors.blue,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.mapa),
                 ),
+                // 📞 CONTACTOS
                 _buildQuickAction(
                   context,
                   icon: Icons.contacts_outlined,
@@ -133,6 +153,7 @@ class HomeContent extends StatelessWidget {
                   color: Colors.green,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.contactos),
                 ),
+                // 🚨 SOS
                 _buildQuickAction(
                   context,
                   icon: Icons.sos,
@@ -140,6 +161,7 @@ class HomeContent extends StatelessWidget {
                   color: Colors.red,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.sos),
                 ),
+                // 📝 REPORTES
                 _buildQuickAction(
                   context,
                   icon: Icons.report_outlined,
@@ -147,29 +169,41 @@ class HomeContent extends StatelessWidget {
                   color: Colors.orange,
                   onTap: () => Navigator.pushNamed(context, AppRoutes.reportes),
                 ),
+                // ⚠️ EXTORSIÓN
+                _buildQuickAction(
+                  context,
+                  icon: Icons.warning_amber_rounded,
+                  label: 'Extorsión',
+                  color: Colors.deepOrange,
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ExtortionScreen(),
+                      ),
+                    );
+                  },
+                ),
+                // 💜 BIENESTAR
                 _buildQuickAction(
                   context,
                   icon: Icons.favorite_outlined,
                   label: 'Bienestar',
                   color: Colors.purple,
                   onTap: () {
-                    Helpers.showSnackBar(context, '💚 Funcionalidad en desarrollo');
-                  },
-                ),
-                _buildQuickAction(
-                  context,
-                  icon: Icons.psychology_outlined,
-                  label: 'Mindfulness',
-                  color: Colors.teal,
-                  onTap: () {
-                    Helpers.showSnackBar(context, '🧘 Funcionalidad en desarrollo');
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BienestarScreen(),
+                      ),
+                    );
                   },
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 20),
-            
+
             // Reportes recientes
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -188,10 +222,10 @@ class HomeContent extends StatelessWidget {
                 ),
               ],
             ),
-            
+
             const SizedBox(height: 8),
-            
-            // ✅ Reemplazamos Expanded por SizedBox con altura fija
+
+            // Lista de reportes
             reporteProvider.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : reporteProvider.reportes.isEmpty
@@ -230,7 +264,7 @@ class HomeContent extends StatelessWidget {
                         ),
                       )
                     : SizedBox(
-                        height: 300, // ✅ Altura fija para la lista
+                        height: 300,
                         child: ListView.builder(
                           itemCount: reporteProvider.reportes.take(3).length,
                           itemBuilder: (context, index) {
@@ -243,7 +277,7 @@ class HomeContent extends StatelessWidget {
                               child: ListTile(
                                 leading: CircleAvatar(
                                   backgroundColor: Helpers.getReporteColor(reporte.estado)
-                                      .withOpacity(0.2),
+                                      .withValues(alpha: 0.2),
                                   child: Icon(
                                     Icons.report,
                                     color: Helpers.getReporteColor(reporte.estado),
@@ -267,7 +301,7 @@ class HomeContent extends StatelessWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     color: Helpers.getReporteColor(reporte.estado)
-                                        .withOpacity(0.2),
+                                        .withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
@@ -308,10 +342,10 @@ class HomeContent extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: color.withOpacity(0.1),
+          color: color.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: color.withOpacity(0.2),
+            color: color.withValues(alpha: 0.2),
             width: 1,
           ),
         ),

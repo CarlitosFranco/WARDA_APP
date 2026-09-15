@@ -42,8 +42,34 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^3.0.0
 
+  # ========== GENERADOR DE ÍCONOS DE APP ==========
+  flutter_launcher_icons: ^0.13.1
+
 flutter:
   uses-material-design: true
 
   assets:
     - assets/images/
+
+# ============================================================
+# 🎨 CONFIGURACIÓN DEL APP ICON
+# Genera todos los tamaños de íconos para Android, iOS y Web
+# a partir de una sola imagen.
+#
+# Comando para generar: flutter pub run flutter_launcher_icons
+# ============================================================
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true          
+  
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: "assets/images/app_icon.png"
+  
+  web:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+    background_color: "#1E3A8A"
+    theme_color: "#1E3A8A"

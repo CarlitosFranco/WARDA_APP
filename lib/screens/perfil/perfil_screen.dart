@@ -22,32 +22,69 @@ class PerfilScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // Foto de perfil
+            // ✅ FOTO DE PERFIL (avatar con logo de WARDA por defecto)
             Center(
               child: Stack(
                 children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: theme.colorScheme.primary.withOpacity(0.1),
-                    child: Icon(
-                      Icons.person,
-                      size: 60,
-                      color: theme.colorScheme.primary,
+                  // Avatar circular con el logo de WARDA
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.3),
+                        width: 3,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: Padding(
+                        padding: const EdgeInsets.all(10),
+                        child: Image.asset(
+                          'assets/images/app_icon.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.person,
+                              size: 60,
+                              color: theme.colorScheme.primary,
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
+                  // Botón de cámara (para cambiar foto)
                   Positioned(
                     bottom: 0,
                     right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 20,
+                    child: GestureDetector(
+                      onTap: () {
+                        Helpers.showSnackBar(
+                          context,
+                          '📷 Funcionalidad en desarrollo',
+                        );
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ),
@@ -55,6 +92,7 @@ class PerfilScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+
             // Nombre
             Text(
               usuario?.nombre ?? 'Usuario',
@@ -69,9 +107,25 @@ class PerfilScreen extends StatelessWidget {
                 color: Colors.grey[600],
               ),
             ),
+
+            // Teléfono (nuevo, para más contexto)
+            if (usuario?.telefono != null && usuario!.telefono.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              Text(
+                usuario.telefono,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[500],
+                ),
+              ),
+            ],
+
             const SizedBox(height: 30),
+
             // Opciones de perfil
             Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Column(
                 children: [
                   _buildMenuItem(
@@ -117,7 +171,6 @@ class PerfilScreen extends StatelessWidget {
                     icon: Icons.dark_mode_outlined,
                     title: 'Tema oscuro',
                     onTap: () {
-                      // TODO: Implementar cambio de tema
                       Helpers.showSnackBar(
                           context, 'Funcionalidad en desarrollo');
                     },
@@ -125,9 +178,14 @@ class PerfilScreen extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 20),
+
             // Estadísticas
             Card(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -172,7 +230,9 @@ class PerfilScreen extends StatelessWidget {
                 ),
               ),
             ),
+
             const SizedBox(height: 20),
+
             // Botón cerrar sesión
             CustomButton(
               text: 'Cerrar sesión',
@@ -180,13 +240,16 @@ class PerfilScreen extends StatelessWidget {
               isOutlined: true,
               color: Colors.red,
             ),
+
             const SizedBox(height: 16),
+
             // Versión
             Text(
-              'Versión 1.0.0',
+              'WARDA v1.0.0',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[500],
+                letterSpacing: 1,
               ),
             ),
           ],

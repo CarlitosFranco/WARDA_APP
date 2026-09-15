@@ -10,25 +10,48 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _dotsController;
+
   @override
   void initState() {
     super.initState();
-    _verificarSesion();
+
+    // ✅ Controlador de animación para los puntitos
+    _dotsController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat();
+
+    // ✅ Usamos addPostFrameCallback para no usar context en initState
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _verificarSesion();
+    });
   }
 
   Future<void> _verificarSesion() async {
-    // Esperar 2 segundos para mostrar el splash
-    await Future.delayed(const Duration(seconds: 2));
+    // Esperar 2.5 segundos para mostrar el splash
+    await Future.delayed(const Duration(milliseconds: 2500));
+
+    if (!mounted) return;
 
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     await authProvider.checkAuthStatus();
+
+    if (!mounted) return;
 
     if (authProvider.isAuthenticated) {
       Navigator.pushReplacementNamed(context, AppRoutes.home);
     } else {
       Navigator.pushReplacementNamed(context, AppRoutes.login);
     }
+  }
+
+  @override
+  void dispose() {
+    _dotsController.dispose();
+    super.dispose();
   }
 
   @override
@@ -43,7 +66,7 @@ class _SplashScreenState extends State<SplashScreen> {
             end: Alignment.bottomCenter,
             colors: [
               theme.colorScheme.primary,
-              theme.colorScheme.primary.withOpacity(0.7),
+              theme.colorScheme.primary.withValues(alpha: 0.7),
             ],
           ),
         ),
@@ -51,55 +74,109 @@ class _SplashScreenState extends State<SplashScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo
+              // ✅ LOGO DE WARDA (tarjeta blanca con bordes redondeados)
               Container(
-                width: 120,
-                height: 120,
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(30),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 20,
                       spreadRadius: 5,
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.health_and_safety,
-                  size: 70,
-                  color: Color(0xFF6C63FF),
+                child: SizedBox(
+                  width: 220,
+                  height: 220,
+                  child: Image.asset(
+                    'assets/images/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Icon(
+                        Icons.health_and_safety,
+                        size: 100,
+                        color: theme.colorScheme.primary,
+                      );
+                    },
+                  ),
                 ),
               ),
-              const SizedBox(height: 30),
-              // Nombre
-              const Text(
-                'WARDA',
-                style: TextStyle(
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                  letterSpacing: 2,
-                ),
-              ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 60),
+
+              // ✅ INDICADOR DE CARGA PERSONALIZADO (3 puntitos rebotando)
+              _buildBouncingDots(),
+              const SizedBox(height: 16),
+
+              // MENSAJE
               Text(
-                'Tu bienestar, nuestra prioridad',
+                'Cargando...',
                 style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withOpacity(0.9),
+                  fontSize: 14,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: 1.2,
                 ),
-              ),
-              const SizedBox(height: 50),
-              // Cargando
-              const CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+
+  // ============================================================
+  // 🔵 INDICADOR DE CARGA PERSONALIZADO (3 puntitos rebotando)
+  // ============================================================
+  Widget _buildBouncingDots() {
+    // Colores de WARDA (naranja, rojo, azul)
+    const colors = [
+      Color(0xFFF59E0B), // Naranja
+      Color(0xFFEF4444), // Rojo
+      Color(0xFF60A5FA), // Azul claro
+    ];
+
+    return AnimatedBuilder(
+      animation: _dotsController,
+      builder: (context, child) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(3, (index) {
+            // Desfase para cada punto (efecto ola)
+            final delay = index * 0.2;
+            final progress = (_dotsController.value - delay) % 1.0;
+
+            // Animación de rebote (sube y baja)
+            final bounce = progress < 0.5
+                ? (progress * 2)
+                : (1 - (progress - 0.5) * 2);
+
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8),
+              child: Transform.translate(
+                offset: Offset(0, -bounce * 15),
+                child: Container(
+                  width: 14,
+                  height: 14,
+                  decoration: BoxDecoration(
+                    color: colors[index],
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: colors[index].withValues(alpha: 0.5),
+                        blurRadius: 8,
+                        spreadRadius: bounce * 3,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

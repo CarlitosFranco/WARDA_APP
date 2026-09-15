@@ -34,24 +34,27 @@ class _LoginScreenState extends State<LoginScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 Center(
                   child: Column(
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.primary.withOpacity(0.1),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.health_and_safety,
-                          size: 45,
-                          color: theme.colorScheme.primary,
+                      // ✅ LOGO DE WARDA (sin círculo, se ve completo)
+                      SizedBox(
+                        width: 220,
+                        height: 220,
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Icon(
+                              Icons.health_and_safety,
+                              size: 100,
+                              color: theme.colorScheme.primary,
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Text(
                         'Bienvenido a WARDA',
                         style: theme.textTheme.headlineMedium?.copyWith(
@@ -63,13 +66,14 @@ class _LoginScreenState extends State<LoginScreen> {
                       Text(
                         'Inicia sesión para continuar',
                         style: theme.textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[600],
+                          color: Colors.grey[700],
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 30),
                 CustomTextField(
                   label: 'Email',
                   hint: 'tu@email.com',
@@ -105,8 +109,8 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 30),
                 CustomButton(
                   text: 'Iniciar sesión',
-                  onPressed: (_isLoading || authProvider.isLoading) 
-                      ? null 
+                  onPressed: (_isLoading || authProvider.isLoading)
+                      ? null
                       : () => _login(context, authProvider),
                   isLoading: _isLoading || authProvider.isLoading,
                 ),
@@ -137,7 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(

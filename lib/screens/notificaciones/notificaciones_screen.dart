@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:warda/models/notificacion_model.dart';
+import 'package:warda/models/notification_model.dart';
 import 'package:warda/utils/helpers.dart';
 
 class NotificacionesScreen extends StatefulWidget {

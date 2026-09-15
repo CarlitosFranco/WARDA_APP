@@ -30,8 +30,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
+      backgroundColor: const Color.fromARGB(255, 182, 217, 240),
       appBar: AppBar(
         title: const Text('Crear cuenta'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: Colors.black87,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -45,21 +49,48 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 10),
-                Text(
-                  'Regístrate en WARDA',
-                  style: theme.textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+                // ✅ LOGO DE WARDA (más pequeño para dejar espacio al formulario)
+                Center(
+                  child: SizedBox(
+                    width: 140,
+                    height: 140,
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) {
+                        return Icon(
+                          Icons.health_and_safety,
+                          size: 80,
+                          color: theme.colorScheme.primary,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // TÍTULO
+                Center(
+                  child: Text(
+                    'Regístrate en WARDA',
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  'Completa tus datos para comenzar',
-                  style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.grey[600],
+                Center(
+                  child: Text(
+                    'Completa tus datos para comenzar',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[700],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 30),
+
+                // CAMPOS DEL FORMULARIO
                 CustomTextField(
                   label: 'Nombre completo',
                   hint: 'Tu nombre',
@@ -109,10 +140,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   prefixIcon: Icons.lock_outlined,
                 ),
                 const SizedBox(height: 20),
+
+                // TÉRMINOS Y CONDICIONES
                 Row(
                   children: [
                     Checkbox(
                       value: _acceptTerms,
+                      activeColor: theme.colorScheme.primary,
                       onChanged: (value) {
                         setState(() {
                           _acceptTerms = value ?? false;
@@ -128,6 +162,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ],
                 ),
                 const SizedBox(height: 20),
+
+                // BOTÓN CREAR CUENTA
                 CustomButton(
                   text: 'Crear cuenta',
                   onPressed: (_isLoading || authProvider.isLoading || !_acceptTerms)
@@ -135,12 +171,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       : () => _register(context, authProvider),
                   isLoading: _isLoading || authProvider.isLoading,
                 ),
+
+                // MENSAJE DE ERROR
                 if (authProvider.error != null) ...[
                   const SizedBox(height: 16),
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(0.1),
+                      color: Colors.red.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -158,6 +196,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ],
                 const SizedBox(height: 20),
+
+                // LINK A LOGIN
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -169,7 +209,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       onPressed: () {
                         Navigator.pushNamed(context, AppRoutes.login);
                       },
-                      child: const Text('Inicia sesión'),
+                      child: const Text(
+                        'Inicia sesión',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
                     ),
                   ],
                 ),

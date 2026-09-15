@@ -1,3 +1,8 @@
+// ============================================================
+// 📁 models/notification_model.dart
+// Modelo de Notificación para WARDA
+// ============================================================
+
 class Notificacion {
   final String id;
   final String titulo;
@@ -17,6 +22,7 @@ class Notificacion {
     this.data,
   });
 
+  /// Convierte a Map para guardar en SQLite
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -29,6 +35,7 @@ class Notificacion {
     };
   }
 
+  /// Crea una instancia desde un Map (SQLite o JSON)
   factory Notificacion.fromMap(Map<String, dynamic> map) {
     return Notificacion(
       id: map['id'] ?? '',
@@ -36,8 +43,31 @@ class Notificacion {
       mensaje: map['mensaje'] ?? '',
       tipo: map['tipo'] ?? '',
       leida: map['leida'] ?? false,
-      fecha: DateTime.parse(map['fecha'] ?? DateTime.now().toIso8601String()),
+      fecha: DateTime.parse(
+        map['fecha'] ?? DateTime.now().toIso8601String(),
+      ),
       data: map['data'],
+    );
+  }
+
+  /// Copia con datos actualizados
+  Notificacion copyWith({
+    String? id,
+    String? titulo,
+    String? mensaje,
+    String? tipo,
+    bool? leida,
+    DateTime? fecha,
+    String? data,
+  }) {
+    return Notificacion(
+      id: id ?? this.id,
+      titulo: titulo ?? this.titulo,
+      mensaje: mensaje ?? this.mensaje,
+      tipo: tipo ?? this.tipo,
+      leida: leida ?? this.leida,
+      fecha: fecha ?? this.fecha,
+      data: data ?? this.data,
     );
   }
 }
