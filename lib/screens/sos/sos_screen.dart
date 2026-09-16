@@ -13,7 +13,8 @@ class SosScreen extends StatefulWidget {
   State<SosScreen> createState() => _SosScreenState();
 }
 
-class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMixin {
+class _SosScreenState extends State<SosScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _pulseAnimation;
   bool _isSosActivated = false;
@@ -74,7 +75,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                 Text(
                   'Tus contactos de emergencia serán notificados\ncon tu ubicación en tiempo real',
                   style: theme.textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
+                    color: Colors.white.withValues(alpha: 0.9),
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -94,7 +95,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                             color: Colors.white,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.white.withOpacity(0.3),
+                                color: Colors.white.withValues(alpha: 0.3),
                                 blurRadius: 30,
                                 spreadRadius: 20,
                               ),
@@ -105,17 +106,25 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
-                                  _isSosActivated ? Icons.emergency : Icons.sos,
+                                  _isSosActivated
+                                      ? Icons.emergency
+                                      : Icons.sos,
                                   size: 80,
-                                  color: _isSosActivated ? Colors.red : Colors.red.shade700,
+                                  color: _isSosActivated
+                                      ? Colors.red
+                                      : Colors.red.shade700,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
-                                  _isSosActivated ? 'ACTIVADO' : 'TOCA PARA SOS',
+                                  _isSosActivated
+                                      ? 'ACTIVADO'
+                                      : 'TOCA PARA SOS',
                                   style: TextStyle(
                                     fontSize: 16,
                                     fontWeight: FontWeight.bold,
-                                    color: _isSosActivated ? Colors.red : Colors.red.shade700,
+                                    color: _isSosActivated
+                                        ? Colors.red
+                                        : Colors.red.shade700,
                                   ),
                                 ),
                               ],
@@ -131,7 +140,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -149,8 +158,11 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
-                          backgroundColor: Colors.white.withOpacity(0.3),
-                          valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
+                          backgroundColor:
+                              Colors.white.withValues(alpha: 0.3),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         CustomButton(
@@ -168,7 +180,7 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
                   Text(
                     'Solo usa esta función en caso de EMERGENCIA REAL',
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.7),
+                      color: Colors.white.withValues(alpha: 0.7),
                       fontSize: 12,
                     ),
                     textAlign: TextAlign.center,
@@ -182,10 +194,12 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
   }
 
   // ============================================================
-  // 📤 ENVIAR ALERTA A CONTACTOS
+  // 📤 ENVIAR ALERTA A CONTACTOS (WhatsApp primero, SMS fallback)
+  // Sin verificar canLaunchUrl (más compatible en Android 11+)
   // ============================================================
   Future<void> _enviarAlertaContactos(double lat, double lng) async {
-    final usuarioProvider = Provider.of<UsuarioProvider>(context, listen: false);
+    final usuarioProvider =
+        Provider.of<UsuarioProvider>(context, listen: false);
     final contactos = usuarioProvider.getContactos();
 
     if (contactos.isEmpty) {
@@ -200,40 +214,65 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     }
 
     final mapsUrl = 'https://maps.google.com/?q=$lat,$lng';
-    final mensaje = '🚨 ¡EMERGENCIA! Necesito ayuda. Mi ubicación actual es: $mapsUrl';
+    final mensaje =
+        '🚨 ¡EMERGENCIA! Necesito ayuda. Mi ubicación actual es: $mapsUrl';
+    final mensajeCodificado = Uri.encodeComponent(mensaje);
 
-    for (var contacto in contactos) {
-      final telefono = contacto.telefono.replaceAll(RegExp(r'[^0-9]'), '');
-      final whatsappUrl = 'https://wa.me/51$telefono?text=${Uri.encodeComponent(mensaje)}';
+    final contacto = contactos.first;
 
-      try {
-        if (await canLaunchUrl(Uri.parse(whatsappUrl))) {
-          await launchUrl(Uri.parse(whatsappUrl));
-          break; // Si se abre WhatsApp, no abrir SMS para el mismo contacto
-        } else {
-          final smsUrl = 'sms:$telefono?body=${Uri.encodeComponent(mensaje)}';
-          if (await canLaunchUrl(Uri.parse(smsUrl))) {
-            await launchUrl(Uri.parse(smsUrl));
-          } else {
-            if (mounted) {
-              Helpers.showSnackBar(
-                context,
-                '❌ No se puede enviar mensaje a ${contacto.nombre}',
-                color: Colors.red,
-              );
-            }
-          }
-        }
-      } catch (e) {
-        print('Error enviando alerta a ${contacto.nombre}: $e');
-        if (mounted) {
-          Helpers.showSnackBar(
-            context,
-            '❌ Error al enviar alerta a ${contacto.nombre}',
-            color: Colors.red,
-          );
-        }
+    var telefono = contacto.telefono.replaceAll(RegExp(r'[^0-9]'), '');
+    if (!telefono.startsWith('51') && telefono.length == 9) {
+      telefono = '51$telefono';
+    }
+
+    debugPrint('📱 Enviando a: $telefono (${contacto.nombre})');
+
+    // 1️⃣ Intentar WhatsApp primero (SIN verificar canLaunchUrl)
+    final whatsappUri =
+        Uri.parse('https://wa.me/$telefono?text=$mensajeCodificado');
+    debugPrint('🔗 WhatsApp URL: $whatsappUri');
+
+    try {
+      await launchUrl(whatsappUri, mode: LaunchMode.externalApplication);
+      debugPrint('✅ WhatsApp abierto');
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '✅ Alerta enviada a ${contacto.nombre} por WhatsApp',
+          color: Colors.green,
+        );
       }
+      return;
+    } catch (e) {
+      debugPrint('⚠️ Error con WhatsApp: $e');
+    }
+
+    // 2️⃣ Fallback a SMS
+    final smsUri = Uri.parse('sms:$telefono?body=$mensajeCodificado');
+    debugPrint('🔗 SMS URL: $smsUri');
+
+    try {
+      await launchUrl(smsUri, mode: LaunchMode.externalApplication);
+      debugPrint('✅ SMS abierto');
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '✅ Alerta enviada a ${contacto.nombre} por SMS',
+          color: Colors.green,
+        );
+      }
+      return;
+    } catch (e) {
+      debugPrint('⚠️ Error con SMS: $e');
+    }
+
+    // 3️⃣ Si nada funciona
+    if (mounted) {
+      Helpers.showSnackBar(
+        context,
+        '❌ No se pudo abrir WhatsApp ni SMS.',
+        color: Colors.red,
+      );
     }
   }
 
@@ -248,17 +287,9 @@ class _SosScreenState extends State<SosScreen> with SingleTickerProviderStateMix
     if (position != null) {
       final lat = position.latitude;
       final lng = position.longitude;
-      print('📍 Ubicación: $lat, $lng');
+      debugPrint('📍 Ubicación: $lat, $lng');
 
       await _enviarAlertaContactos(lat, lng);
-
-      if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          '📨 Alertas enviadas a tus contactos de emergencia',
-          color: Colors.green,
-        );
-      }
     } else {
       if (mounted) {
         Helpers.showSnackBar(

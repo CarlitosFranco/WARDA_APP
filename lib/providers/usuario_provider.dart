@@ -1,74 +1,44 @@
 // ============================================================
 // 📁 providers/usuario_provider.dart
-// Provider para gestionar el usuario y sus contactos de emergencia
+// Provider complementario para gestionar datos del usuario
+// (trabaja en conjunto con AuthProvider y DatabaseService)
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:warda/models/usuario_model.dart';
+import 'package:warda/services/database_service.dart';
 
 class UsuarioProvider extends ChangeNotifier {
+  final DatabaseService _db = DatabaseService();
+
   Usuario? _usuario;
   bool _isLoading = false;
   String? _error;
 
+  // ============================================================
+  // GETTERS
+  // ============================================================
   Usuario? get usuario => _usuario;
   bool get isLoading => _isLoading;
   String? get error => _error;
-  List<ContactoEmergencia> get contactos => _usuario?.contactosEmergencia ?? [];
+  List<ContactoEmergencia> get contactos =>
+      _usuario?.contactosEmergencia ?? const [];
 
   // ============================================================
-  // 🔄 CARGAR USUARIO DESDE SHARED_PREFERENCES (funciona en Web)
+  // 🔄 CARGAR USUARIO DESDE SQLITE
   // ============================================================
   Future<void> cargarUsuario(String id) async {
     _setLoading(true);
     _clearError();
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString('usuario_$id');
-
-      if (userJson != null) {
-        // Si existe en SharedPreferences, lo recuperamos
-        final Map<String, dynamic> map = Map<String, dynamic>.from(
-          userJson as Map, // Asumimos que guardamos como JSON string
-        );
-        _usuario = Usuario.fromMap(map);
-      } else {
-        // Si no existe, creamos uno de prueba (o podrías cargar desde AuthProvider)
-        _usuario = Usuario(
-          id: id,
-          nombre: 'Usuario de Prueba',
-          email: 'test@warda.com',
-          telefono: '999999999',
-          contactosEmergencia: [],
-          notificacionesActivas: true,
-          ubicacionCompartida: true,
-        );
-        // Guardamos el usuario inicial
-        await _guardarUsuario();
-      }
-      _setLoading(false);
+      final usuario = await _db.getUsuarioById(id);
+      _usuario = usuario; // Puede ser null si no existe
     } catch (e) {
-      _error = e.toString();
-      _setLoading(false);
+      _error = e.toString().replaceFirst('Exception: ', '');
     }
-  }
 
-  // ============================================================
-  // 💾 GUARDAR USUARIO EN SHARED_PREFERENCES
-  // ============================================================
-  Future<void> _guardarUsuario() async {
-    if (_usuario == null) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userMap = _usuario!.toMap();
-      // Convertir a String JSON (podrías usar jsonEncode)
-      await prefs.setString('usuario_${_usuario!.id}', userMap.toString());
-    } catch (e) {
-      // Si falla, solo lo registramos
-      debugPrint('Error guardando usuario: $e');
-    }
+    _setLoading(false);
   }
 
   // ============================================================
@@ -79,13 +49,17 @@ class UsuarioProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      _usuario = usuario;
-      await _guardarUsuario();
+      await _db.updateUsuario(usuario);
+
+      // Recargar el usuario actualizado
+      final actualizado = await _db.getUsuarioById(usuario.id);
+      _usuario = actualizado ?? usuario;
+
       _setLoading(false);
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       _setLoading(false);
       return false;
     }
@@ -104,7 +78,7 @@ class UsuarioProvider extends ChangeNotifier {
     _clearError();
 
     try {
-      // 1. Crear el nuevo contacto
+      // Crear nuevo contacto
       final nuevoContacto = ContactoEmergencia(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         nombre: nombre.trim(),
@@ -112,31 +86,17 @@ class UsuarioProvider extends ChangeNotifier {
         relacion: relacion.trim(),
       );
 
-      // 2. Si no hay usuario, lo creamos temporal (por seguridad)
-      if (_usuario == null) {
-        _usuario = Usuario(
-          id: usuarioId,
-          nombre: 'Usuario',
-          email: 'usuario@warda.com',
-          telefono: '999999999',
-          contactosEmergencia: [],
-          notificacionesActivas: true,
-          ubicacionCompartida: true,
-        );
-      }
+      // Guardar en SQLite
+      await _db.insertContacto(usuarioId, nuevoContacto);
 
-      // 3. Agregar el contacto a la lista
-      _usuario!.contactosEmergencia.add(nuevoContacto);
+      // Recargar usuario (con contactos actualizados)
+      _usuario = await _db.getUsuarioById(usuarioId);
 
-      // 4. Persistir en SharedPreferences
-      await _guardarUsuario();
-
-      // 5. Notificar cambios
       _setLoading(false);
       notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       _setLoading(false);
       return false;
     }
@@ -150,26 +110,45 @@ class UsuarioProvider extends ChangeNotifier {
     _clearError();
 
     try {
+      await _db.deleteContacto(contactoId);
+
+      // Recargar usuario si tenemos su ID
       if (_usuario != null) {
-        _usuario!.contactosEmergencia
-            .removeWhere((contacto) => contacto.id == contactoId);
-        await _guardarUsuario();
-        notifyListeners();
+        _usuario = await _db.getUsuarioById(_usuario!.id);
       }
+
       _setLoading(false);
+      notifyListeners();
       return true;
     } catch (e) {
-      _error = e.toString();
+      _error = e.toString().replaceFirst('Exception: ', '');
       _setLoading(false);
       return false;
     }
   }
 
   // ============================================================
-  // 📋 OBTENER LISTA DE CONTACTOS (método auxiliar)
+  // 📋 OBTENER LISTA DE CONTACTOS (helper)
   // ============================================================
   List<ContactoEmergencia> getContactos() {
-    return _usuario?.contactosEmergencia ?? [];
+    return _usuario?.contactosEmergencia ?? const [];
+  }
+
+  // ============================================================
+  // 🔍 REFRESCAR USUARIO DESDE LA BD
+  // ============================================================
+  Future<void> refrescar() async {
+    if (_usuario == null) return;
+
+    try {
+      final actualizado = await _db.getUsuarioById(_usuario!.id);
+      if (actualizado != null) {
+        _usuario = actualizado;
+        notifyListeners();
+      }
+    } catch (e) {
+      _error = e.toString();
+    }
   }
 
   // ============================================================
@@ -177,6 +156,7 @@ class UsuarioProvider extends ChangeNotifier {
   // ============================================================
   void limpiarUsuario() {
     _usuario = null;
+    _error = null;
     notifyListeners();
   }
 
@@ -190,6 +170,6 @@ class UsuarioProvider extends ChangeNotifier {
 
   void _clearError() {
     _error = null;
-    notifyListeners();
+    // No notificamos aquí para evitar doble rebuild
   }
 }

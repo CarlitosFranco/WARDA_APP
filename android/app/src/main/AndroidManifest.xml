@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
     <!-- ============================================ -->
-    <!-- 🌐 PERMISO PARA INTERNET (Necesario para mapas) -->
+    <!-- 🌐 PERMISO PARA INTERNET                     -->
     <!-- ============================================ -->
     <uses-permission android:name="android.permission.INTERNET" />
     
@@ -16,11 +16,6 @@
         android:label="warda"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
-        
-        <!-- ============================================ -->
-        <!-- 🗺️ NOTA: Usamos OpenStreetMap, NO Google Maps -->
-        <!-- No se necesita API Key.                     -->
-        <!-- ============================================ -->
         
         <activity
             android:name=".MainActivity"
@@ -42,16 +37,70 @@
             </intent-filter>
         </activity>
         
-        <!-- Don't delete the meta-data below.
-             This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
             
     </application>
     
-    <!-- Required to query activities that can process text -->
+    <!-- ============================================ -->
+    <!-- 📱 QUERIES: Permite abrir WhatsApp, SMS, teléfono, etc. -->
+    <!-- Necesario en Android 11+ (API 30+)           -->
+    <!-- ⚠️ DEBE ESTAR FUERA DE <application>          -->
+    <!-- ============================================ -->
     <queries>
+        <!-- WhatsApp (dominios específicos) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="wa.me" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="api.whatsapp.com" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" android:host="web.whatsapp.com" />
+        </intent>
+        <!-- Scheme directo de WhatsApp -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="whatsapp" />
+        </intent>
+        
+        <!-- SMS -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="sms" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="smsto" />
+        </intent>
+        <intent>
+            <action android:name="android.intent.action.SENDTO" />
+            <data android:scheme="smsto" />
+        </intent>
+        
+        <!-- Llamadas telefónicas -->
+        <intent>
+            <action android:name="android.intent.action.DIAL" />
+            <data android:scheme="tel" />
+        </intent>
+        
+        <!-- Navegador (fallback genérico para https) -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        
+        <!-- Google Maps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        
+        <!-- Procesamiento de texto (obligatorio para Flutter) -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>

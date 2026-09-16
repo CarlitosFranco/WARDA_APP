@@ -1,6 +1,7 @@
 // ============================================================
 // 📁 models/usuario_model.dart
 // Modelos de datos: Usuario y ContactoEmergencia
+// Compatible con SQLite
 // ============================================================
 
 class ContactoEmergencia {
@@ -16,7 +17,7 @@ class ContactoEmergencia {
     required this.relacion,
   });
 
-  /// Convierte a Map para almacenamiento en BD o SharedPreferences
+  /// Convierte a Map para guardar en SQLite (tabla `contactos`)
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -26,17 +27,17 @@ class ContactoEmergencia {
     };
   }
 
-  /// Crea una instancia desde un Map
+  /// Crea una instancia desde un Map (SQLite o JSON)
   factory ContactoEmergencia.fromMap(Map<String, dynamic> map) {
     return ContactoEmergencia(
-      id: map['id'] ?? '',
-      nombre: map['nombre'] ?? '',
-      telefono: map['telefono'] ?? '',
-      relacion: map['relacion'] ?? '',
+      id: (map['id'] ?? '').toString(),
+      nombre: (map['nombre'] ?? '').toString(),
+      telefono: (map['telefono'] ?? '').toString(),
+      relacion: (map['relacion'] ?? '').toString(),
     );
   }
 
-  /// Crea una copia con datos actualizados (útil para editar)
+  /// Crea una copia con datos actualizados
   ContactoEmergencia copyWith({
     String? id,
     String? nombre,
@@ -49,6 +50,11 @@ class ContactoEmergencia {
       telefono: telefono ?? this.telefono,
       relacion: relacion ?? this.relacion,
     );
+  }
+
+  @override
+  String toString() {
+    return 'ContactoEmergencia(id: $id, nombre: $nombre, tel: $telefono, relacion: $relacion)';
   }
 }
 
@@ -73,7 +79,8 @@ class Usuario {
     this.ubicacionCompartida = true,
   });
 
-  /// Convierte a Map para almacenamiento
+  /// Convierte a Map SOLO con las columnas de la tabla `usuarios`.
+  /// ⚠️ NO incluye `contactosEmergencia` porque van en otra tabla.
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -81,29 +88,23 @@ class Usuario {
       'email': email,
       'telefono': telefono,
       'fotoUrl': fotoUrl,
-      'contactosEmergencia': contactosEmergencia.map((c) => c.toMap()).toList(),
-      'notificacionesActivas': notificacionesActivas,
-      'ubicacionCompartida': ubicacionCompartida,
+      'notificacionesActivas': notificacionesActivas ? 1 : 0,
+      'ubicacionCompartida': ubicacionCompartida ? 1 : 0,
     };
   }
 
-  /// Crea una instancia desde un Map
+  /// Crea una instancia desde un Map (SQLite o JSON).
+  /// Los contactos de emergencia se cargan por separado con el DatabaseService.
   factory Usuario.fromMap(Map<String, dynamic> map) {
     return Usuario(
-      id: map['id'] ?? '',
-      nombre: map['nombre'] ?? '',
-      email: map['email'] ?? '',
-      telefono: map['telefono'] ?? '',
-      fotoUrl: map['fotoUrl'],
-      contactosEmergencia: map['contactosEmergencia'] != null
-          ? List<ContactoEmergencia>.from(
-              (map['contactosEmergencia'] as List).map(
-                (c) => ContactoEmergencia.fromMap(c as Map<String, dynamic>),
-              ),
-            )
-          : [],
-      notificacionesActivas: map['notificacionesActivas'] ?? true,
-      ubicacionCompartida: map['ubicacionCompartida'] ?? true,
+      id: (map['id'] ?? '').toString(),
+      nombre: (map['nombre'] ?? '').toString(),
+      email: (map['email'] ?? '').toString(),
+      telefono: (map['telefono'] ?? '').toString(),
+      fotoUrl: map['fotoUrl'] as String?,
+      contactosEmergencia: const [], // Se cargan aparte desde la tabla `contactos`
+      notificacionesActivas: _parseBool(map['notificacionesActivas'], true),
+      ubicacionCompartida: _parseBool(map['ubicacionCompartida'], true),
     );
   }
 
@@ -129,4 +130,23 @@ class Usuario {
       ubicacionCompartida: ubicacionCompartida ?? this.ubicacionCompartida,
     );
   }
+
+  @override
+  String toString() {
+    return 'Usuario(id: $id, nombre: $nombre, email: $email, tel: $telefono)';
+  }
+}
+
+// ============================================================
+// 🛠️ HELPER: Convierte 0/1/true/false/null a bool de forma segura
+// ============================================================
+bool _parseBool(dynamic value, [bool defaultValue = true]) {
+  if (value == null) return defaultValue;
+  if (value is bool) return value;
+  if (value is int) return value == 1;
+  if (value is String) {
+    final lower = value.toLowerCase();
+    return lower == '1' || lower == 'true';
+  }
+  return defaultValue;
 }
