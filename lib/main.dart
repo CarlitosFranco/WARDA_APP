@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:warda/providers/auth_provider.dart';
 import 'package:warda/providers/reporte_provider.dart';
-import 'package:warda/providers/usuario_provider.dart';
 import 'package:warda/routes/app_routes.dart';
 import 'package:warda/services/database_service.dart';
 
@@ -42,7 +41,7 @@ class MyApp extends StatelessWidget {
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => ReporteProvider()),
-        ChangeNotifierProvider(create: (_) => UsuarioProvider()),
+        // ❌ UsuarioProvider eliminado (reemplazado por AuthProvider)
       ],
       child: MaterialApp(
         title: 'WARDA',

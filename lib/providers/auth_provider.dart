@@ -1,18 +1,15 @@
 // ============================================================
 // 📁 providers/auth_provider.dart
-// Provider de autenticación usando SQLite + SharedPreferences
+// Provider de autenticación con backend + caché local
 // ============================================================
 
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:warda/models/usuario_model.dart';
 import 'package:warda/services/auth_service.dart';
+import 'package:warda/services/token_storage.dart';
 
 class AuthProvider extends ChangeNotifier {
   final AuthService _authService = AuthService();
-
-  // Clave para guardar el ID del usuario en SharedPreferences
-  static const String _keyUserId = 'warda_user_id';
 
   Usuario? _usuarioActual;
   bool _isLoading = false;
@@ -33,10 +30,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       final nuevoUsuario = await _authService.register(usuario, password);
       _usuarioActual = nuevoUsuario;
-
-      // Guardar sesión (excepto si es invitado)
-      await _guardarSesion(nuevoUsuario.id);
-
       _setLoading(false);
       return true;
     } catch (e) {
@@ -56,10 +49,6 @@ class AuthProvider extends ChangeNotifier {
     try {
       final usuario = await _authService.login(email, password);
       _usuarioActual = usuario;
-
-      // Guardar sesión
-      await _guardarSesion(usuario.id);
-
       _setLoading(false);
       return true;
     } catch (e) {
@@ -92,17 +81,17 @@ class AuthProvider extends ChangeNotifier {
     _setLoading(true);
 
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final userId = prefs.getString(_keyUserId);
+      // Verificar si hay token guardado
+      final hasSession = await TokenStorage.hasSession();
 
-      if (userId != null && !userId.startsWith('invitado_')) {
-        // Cargar usuario desde la BD
-        final usuario = await _authService.getUserById(userId);
+      if (hasSession) {
+        // Intentar cargar el usuario (backend o caché)
+        final usuario = await _authService.getCurrentUser();
         if (usuario != null) {
           _usuarioActual = usuario;
         } else {
-          // Si el usuario no existe en la BD, limpiar sesión
-          await prefs.remove(_keyUserId);
+          // Token inválido o expirado → limpiar
+          await TokenStorage.clearSession();
         }
       }
     } catch (e) {
@@ -176,7 +165,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       await _authService.eliminarContacto(contactoId);
 
-      // Recargar usuario para actualizar la lista de contactos
+      // Recargar usuario para actualizar lista
       final actualizado = await _authService.getUserById(_usuarioActual!.id);
       if (actualizado != null) {
         _usuarioActual = actualizado;
@@ -200,14 +189,7 @@ class AuthProvider extends ChangeNotifier {
   // 🚪 CERRAR SESIÓN
   // ============================================================
   Future<void> logout() async {
-    // Limpiar sesión persistida
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_keyUserId);
-
-    // Llamar al servicio (placeholder por si se necesita más lógica)
     await _authService.logout();
-
-    // Limpiar estado en memoria
     _usuarioActual = null;
     _error = null;
     notifyListeners();
@@ -216,14 +198,6 @@ class AuthProvider extends ChangeNotifier {
   // ============================================================
   // 🛠️ HELPERS INTERNOS
   // ============================================================
-  Future<void> _guardarSesion(String userId) async {
-    // No guardar sesión si es invitado
-    if (userId.startsWith('invitado_')) return;
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyUserId, userId);
-  }
-
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();

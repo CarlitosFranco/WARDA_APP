@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:warda/providers/auth_provider.dart';      // ✅ Importación necesaria
-import 'package:warda/providers/usuario_provider.dart';
+import 'package:warda/providers/auth_provider.dart';
 import 'package:warda/utils/helpers.dart';
 
 class ContactosScreen extends StatefulWidget {
@@ -20,8 +19,8 @@ class _ContactosScreenState extends State<ContactosScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final usuarioProvider = Provider.of<UsuarioProvider>(context);
-    final contactos = usuarioProvider.getContactos();
+    final authProvider = Provider.of<AuthProvider>(context);
+    final contactos = authProvider.getContactos();
 
     return Scaffold(
       appBar: AppBar(
@@ -31,12 +30,12 @@ class _ContactosScreenState extends State<ContactosScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () => _mostrarDialogoAgregar(context, usuarioProvider),
+            onPressed: () => _mostrarDialogoAgregar(context),
             tooltip: 'Agregar contacto',
           ),
         ],
       ),
-      body: usuarioProvider.isLoading
+      body: authProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
           : contactos.isEmpty
               ? Center(
@@ -64,7 +63,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton.icon(
-                        onPressed: () => _mostrarDialogoAgregar(context, usuarioProvider),
+                        onPressed: () => _mostrarDialogoAgregar(context),
                         icon: const Icon(Icons.add),
                         label: const Text('Agregar contacto'),
                         style: ElevatedButton.styleFrom(
@@ -123,7 +122,6 @@ class _ContactosScreenState extends State<ContactosScreen> {
                           icon: const Icon(Icons.delete_outline, color: Colors.red),
                           onPressed: () => _confirmarEliminar(
                             context,
-                            usuarioProvider,
                             contacto.id,
                             contacto.nombre,
                           ),
@@ -140,7 +138,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
                   },
                 ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _mostrarDialogoAgregar(context, usuarioProvider),
+        onPressed: () => _mostrarDialogoAgregar(context),
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add),
@@ -149,7 +147,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
     );
   }
 
-  void _mostrarDialogoAgregar(BuildContext context, UsuarioProvider provider) {
+  void _mostrarDialogoAgregar(BuildContext context) {
     _nombreController.clear();
     _telefonoController.clear();
     _relacionController.clear();
@@ -221,7 +219,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
             child: const Text('Cancelar'),
           ),
           ElevatedButton(
-            onPressed: () => _agregarContacto(context, provider),
+            onPressed: () => _agregarContacto(context),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.green,
               foregroundColor: Colors.white,
@@ -233,15 +231,12 @@ class _ContactosScreenState extends State<ContactosScreen> {
     );
   }
 
-  Future<void> _agregarContacto(BuildContext context, UsuarioProvider provider) async {
+  Future<void> _agregarContacto(BuildContext context) async {
     if (!_formKey.currentState!.validate()) return;
 
-    // ✅ AHORA SÍ RECONOCE AuthProvider POR LA IMPORTACIÓN
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final usuarioId = authProvider.usuarioActual?.id ?? 'invitado_${DateTime.now().millisecondsSinceEpoch}';
 
-    final success = await provider.agregarContactoEmergencia(
-      usuarioId,
+    final success = await authProvider.agregarContacto(
       _nombreController.text.trim(),
       _telefonoController.text.trim(),
       _relacionController.text.trim(),
@@ -258,7 +253,7 @@ class _ContactosScreenState extends State<ContactosScreen> {
       } else {
         Helpers.showSnackBar(
           context,
-          '❌ Error al agregar contacto: ${provider.error}',
+          '❌ Error al agregar contacto: ${authProvider.error}',
           color: Colors.red,
         );
       }
@@ -267,7 +262,6 @@ class _ContactosScreenState extends State<ContactosScreen> {
 
   void _confirmarEliminar(
     BuildContext context,
-    UsuarioProvider provider,
     String contactoId,
     String nombre,
   ) {
@@ -275,7 +269,9 @@ class _ContactosScreenState extends State<ContactosScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Eliminar contacto'),
-        content: Text('¿Estás seguro de eliminar a "$nombre" de tus contactos de emergencia?'),
+        content: Text(
+          '¿Estás seguro de eliminar a "$nombre" de tus contactos de emergencia?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -284,7 +280,9 @@ class _ContactosScreenState extends State<ContactosScreen> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              final success = await provider.eliminarContactoEmergencia(contactoId);
+              final authProvider =
+                  Provider.of<AuthProvider>(context, listen: false);
+              final success = await authProvider.eliminarContacto(contactoId);
               if (context.mounted) {
                 if (success) {
                   Helpers.showSnackBar(

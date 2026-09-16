@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:warda/services/location_service.dart';
-import 'package:warda/providers/usuario_provider.dart';
+import 'package:warda/providers/auth_provider.dart';
 import 'package:warda/utils/helpers.dart';
 import 'package:warda/widgets/custom_button.dart';
 
@@ -195,12 +195,10 @@ class _SosScreenState extends State<SosScreen>
 
   // ============================================================
   // 📤 ENVIAR ALERTA A CONTACTOS (WhatsApp primero, SMS fallback)
-  // Sin verificar canLaunchUrl (más compatible en Android 11+)
   // ============================================================
   Future<void> _enviarAlertaContactos(double lat, double lng) async {
-    final usuarioProvider =
-        Provider.of<UsuarioProvider>(context, listen: false);
-    final contactos = usuarioProvider.getContactos();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    final contactos = authProvider.getContactos();
 
     if (contactos.isEmpty) {
       if (mounted) {
@@ -227,7 +225,7 @@ class _SosScreenState extends State<SosScreen>
 
     debugPrint('📱 Enviando a: $telefono (${contacto.nombre})');
 
-    // 1️⃣ Intentar WhatsApp primero (SIN verificar canLaunchUrl)
+    // 1️⃣ Intentar WhatsApp primero
     final whatsappUri =
         Uri.parse('https://wa.me/$telefono?text=$mensajeCodificado');
     debugPrint('🔗 WhatsApp URL: $whatsappUri');

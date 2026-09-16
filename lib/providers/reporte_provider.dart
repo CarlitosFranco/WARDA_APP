@@ -1,6 +1,6 @@
 // ============================================================
 // 📁 providers/reporte_provider.dart
-// Provider de reportes usando SQLite
+// Provider de reportes (HTTP + SQLite fallback)
 // ============================================================
 
 import 'package:flutter/material.dart';
@@ -61,7 +61,6 @@ class ReporteProvider extends ChangeNotifier {
 
     try {
       final nuevo = await _apiService.crearReporte(reporte);
-      // Insertar al inicio para que aparezca primero
       _reportes.insert(0, nuevo);
       _setLoading(false);
       notifyListeners();
@@ -165,6 +164,5 @@ class ReporteProvider extends ChangeNotifier {
 
   void _clearError() {
     _error = null;
-    // No llamamos a notifyListeners aquí para evitar doble rebuild
   }
 }
