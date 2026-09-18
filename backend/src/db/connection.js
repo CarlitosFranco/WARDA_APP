@@ -1,22 +1,43 @@
 // ============================================================
 // 📁 src/db/connection.js
 // Configuración de la conexión a PostgreSQL
+// Soporta:
+//  - DATABASE_URL (Render, Railway, Heroku)
+//  - Variables individuales (desarrollo local con .env)
 // ============================================================
 
 const { Pool } = require('pg');
 require('dotenv').config();
 
-// Pool de conexiones (reutiliza conexiones para mejor rendimiento)
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT, 10),
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  max: 20,                 // Máximo de conexiones en el pool
-  idleTimeoutMillis: 30000, // 30s antes de cerrar conexiones inactivas
-  connectionTimeoutMillis: 2000, // 2s timeout al conectar
-});
+// Detectar si estamos en producción (Render inyecta DATABASE_URL)
+const connectionString = process.env.DATABASE_URL;
+
+let poolConfig;
+
+if (connectionString) {
+  // Modo producción (Render): usar DATABASE_URL completa
+  poolConfig = {
+    connectionString: connectionString,
+    ssl: { rejectUnauthorized: false }, // Requerido por Render
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 5000,
+  };
+} else {
+  // Modo desarrollo local: usar variables del .env
+  poolConfig = {
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    max: 20,
+    idleTimeoutMillis: 30000,
+    connectionTimeoutMillis: 2000,
+  };
+}
+
+const pool = new Pool(poolConfig);
 
 // Evento: cuando se conecta exitosamente
 pool.on('connect', () => {
