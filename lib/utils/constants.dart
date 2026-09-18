@@ -7,18 +7,16 @@ class AppConstants {
   // ============================================================
   // 🌐 API
   // ============================================================
-  // Para DESARROLLO (backend local en tu PC):
+  // 🚀 PRODUCCIÓN (Render - backend en la nube):
+  //    El backend está desplegado en Render y es accesible desde
+  //    cualquier red del mundo (WiFi, datos móviles, etc.)
+  //
+  // Para DESARROLLO local (backend en tu PC):
   //   - Emulador Android: 'http://10.0.2.2:3000/api'
-  //   - Celular físico:   'http://192.168.0.4:3000/api'  ← Tu IP local
+  //   - Celular físico:   'http://192.168.0.4:3000/api'
   //   - Web (Chrome):     'http://localhost:3000/api'
-  //
-  // Para PRODUCCIÓN (cuando lo subas a un servidor):
-  //   - 'https://api.warda.com/v1'
-  //
-  // ⚠️ IMPORTANTE: Si tu IP local cambia (por ejemplo al reiniciar el router),
-  //    actualízala aquí. Puedes verla con `ipconfig` en PowerShell.
   // ============================================================
-  static const String apiUrl = 'http://192.168.0.4:3000/api';
+  static const String apiUrl = 'https://warda-backend-e3bk.onrender.com/api';
 
   // ============================================================
   // 💾 PREFERENCIAS (SharedPreferences)
@@ -26,7 +24,7 @@ class AppConstants {
   static const String prefToken = 'token';
   static const String prefUsuario = 'usuario';
   static const String prefTheme = 'theme_mode';
-  static const String prefUserId = 'user_id'; // NUEVO: para persistir sesión
+  static const String prefUserId = 'user_id';
 
   // ============================================================
   // 📝 TIPOS DE REPORTE
@@ -79,11 +77,12 @@ class AppConstants {
   // ============================================================
   // ⏱️ TIMEOUTS (en segundos)
   // ============================================================
-  static const int httpTimeoutSeconds = 15;
+  // Aumentado a 30s porque Render "duerme" el servicio gratis
+  // y tarda ~20-30 segundos en despertar la primera vez.
+  static const int httpTimeoutSeconds = 30;
 
   // ============================================================
   // 📱 MODO DE DESARROLLO
   // ============================================================
-  // Cambia a `true` cuando quieras ver logs más detallados
   static const bool debugMode = true;
 }
