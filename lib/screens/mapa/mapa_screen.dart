@@ -27,8 +27,6 @@ class _MapaScreenState extends State<MapaScreen> {
   @override
   void initState() {
     super.initState();
-    // NO leer argumentos aquí, se hará en didChangeDependencies
-    // Programamos la carga de datos después del primer frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _getUserLocation();
       _cargarIncidentes();
@@ -38,7 +36,6 @@ class _MapaScreenState extends State<MapaScreen> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // ✅ Ahora es seguro leer argumentos de navegación
     final args = ModalRoute.of(context)?.settings.arguments;
     if (args is bool && args == true) {
       _modoSeleccion = true;
@@ -67,14 +64,14 @@ class _MapaScreenState extends State<MapaScreen> {
   }
 
   // ============================================================
-  // 📋 CARGAR INCIDENTES DEL USUARIO AUTENTICADO
+  // 📋 CARGAR TODOS LOS INCIDENTES (para el heatmap completo)
   // ============================================================
   Future<void> _cargarIncidentes() async {
-    final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final userId = authProvider.usuarioActual?.id ?? 'invitado_${DateTime.now().millisecondsSinceEpoch}';
-
     final provider = Provider.of<ReporteProvider>(context, listen: false);
-    await provider.cargarReportes(userId);
+
+    // ✅ Cargar TODOS los reportes (no solo los del usuario)
+    // porque el heatmap muestra zonas de riesgo de toda la comunidad
+    await provider.cargarTodosReportes();
 
     if (mounted) {
       setState(() {
@@ -116,6 +113,60 @@ class _MapaScreenState extends State<MapaScreen> {
       default:
         return Icons.warning;
     }
+  }
+
+  // ============================================================
+  // 🔥 GENERAR CAPA DE HEATMAP
+  // Crea círculos concéntricos por cada incidente para simular
+  // un mapa de calor. Cuando varios se superponen, el color
+  // se intensifica = zona de mayor riesgo.
+  // ============================================================
+  List<CircleMarker> _buildHeatmapCircles() {
+    final circles = <CircleMarker>[];
+
+    for (final incidente in _incidentes) {
+      if (incidente.latitud == null || incidente.longitud == null) continue;
+
+      final point = LatLng(incidente.latitud!, incidente.longitud!);
+
+      // 🔴 Capa 1: rojo intenso (núcleo del incidente)
+      circles.add(CircleMarker(
+        point: point,
+        radius: 150, // metros
+        useRadiusInMeter: true,
+        color: Colors.red.withValues(alpha: 0.5),
+        borderStrokeWidth: 0,
+      ));
+
+      // 🟠 Capa 2: naranja (zona caliente)
+      circles.add(CircleMarker(
+        point: point,
+        radius: 300,
+        useRadiusInMeter: true,
+        color: Colors.orange.withValues(alpha: 0.3),
+        borderStrokeWidth: 0,
+      ));
+
+      // 🟡 Capa 3: amarillo (zona templada)
+      circles.add(CircleMarker(
+        point: point,
+        radius: 500,
+        useRadiusInMeter: true,
+        color: Colors.yellow.withValues(alpha: 0.2),
+        borderStrokeWidth: 0,
+      ));
+
+      // 🟢 Capa 4: verde (zona de influencia)
+      circles.add(CircleMarker(
+        point: point,
+        radius: 750,
+        useRadiusInMeter: true,
+        color: Colors.green.withValues(alpha: 0.1),
+        borderStrokeWidth: 0,
+      ));
+    }
+
+    return circles;
   }
 
   // ============================================================
@@ -166,7 +217,8 @@ class _MapaScreenState extends State<MapaScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Helpers.getReporteColor(incidente.estado).withOpacity(0.2),
+                color: Helpers.getReporteColor(incidente.estado)
+                    .withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -201,8 +253,8 @@ class _MapaScreenState extends State<MapaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(_modoSeleccion ? 'Seleccionar ubicación' : 'Mapa de Riesgos'),
-        backgroundColor: _modoSeleccion ? Colors.green : Colors.blue,
+        title: Text(_modoSeleccion ? 'Seleccionar ubicación' : 'Mapa de Calor'),
+        backgroundColor: _modoSeleccion ? Colors.green : Colors.deepOrange,
         foregroundColor: Colors.white,
         actions: [
           if (_modoSeleccion && _puntoSeleccionado != null)
@@ -220,7 +272,8 @@ class _MapaScreenState extends State<MapaScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: () {
               _cargarIncidentes();
-              Helpers.showSnackBar(context, '🔄 Incidentes actualizados', color: Colors.blue);
+              Helpers.showSnackBar(context, '🔄 Incidentes actualizados',
+                  color: Colors.blue);
             },
             tooltip: 'Actualizar incidentes',
           ),
@@ -231,12 +284,13 @@ class _MapaScreenState extends State<MapaScreen> {
           : Stack(
               children: [
                 // ============================================
-                // 🗺️ MAPA
+                // 🗺️ MAPA CON HEATMAP
                 // ============================================
                 FlutterMap(
                   mapController: _mapController,
                   options: MapOptions(
-                    initialCenter: _currentPosition ?? const LatLng(-12.0464, -77.0428),
+                    initialCenter:
+                        _currentPosition ?? const LatLng(-12.0464, -77.0428),
                     initialZoom: 14.0,
                     minZoom: 5.0,
                     maxZoom: 18.0,
@@ -253,10 +307,17 @@ class _MapaScreenState extends State<MapaScreen> {
                   ),
                   children: [
                     TileLayer(
-                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                      urlTemplate:
+                          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                       userAgentPackageName: 'com.example.warda',
                       tileProvider: NetworkTileProvider(),
                     ),
+
+                    // 🔥 CAPA DE HEATMAP (siempre visible)
+                    if (_incidentes.isNotEmpty)
+                      CircleLayer(
+                        circles: _buildHeatmapCircles(),
+                      ),
 
                     // 📍 Marcador de ubicación actual
                     if (_currentPosition != null)
@@ -267,20 +328,38 @@ class _MapaScreenState extends State<MapaScreen> {
                             height: 50,
                             point: _currentPosition!,
                             alignment: Alignment.center,
-                            child: const Icon(
-                              Icons.location_on,
-                              color: Colors.red,
-                              size: 40,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.blue,
+                                  width: 3,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withValues(alpha: 0.4),
+                                    blurRadius: 10,
+                                    spreadRadius: 2,
+                                  ),
+                                ],
+                              ),
+                              child: const Icon(
+                                Icons.my_location,
+                                color: Colors.blue,
+                                size: 24,
+                              ),
                             ),
                           ),
                         ],
                       ),
 
-                    // 📌 Marcadores de incidentes
+                    // 📌 Marcadores de incidentes (encima del heatmap)
                     if (_incidentes.isNotEmpty)
                       MarkerLayer(
                         markers: _incidentes.map((incidente) {
-                          if (incidente.latitud == null || incidente.longitud == null) {
+                          if (incidente.latitud == null ||
+                              incidente.longitud == null) {
                             return null;
                           }
                           final color = _getColorPorTipo(incidente.tipo);
@@ -288,19 +367,23 @@ class _MapaScreenState extends State<MapaScreen> {
                           return Marker(
                             width: 45,
                             height: 45,
-                            point: LatLng(incidente.latitud!, incidente.longitud!),
+                            point: LatLng(
+                                incidente.latitud!, incidente.longitud!),
                             alignment: Alignment.center,
                             child: GestureDetector(
-                              onTap: () => _mostrarDetalleIncidente(context, incidente),
+                              onTap: () =>
+                                  _mostrarDetalleIncidente(context, incidente),
                               child: Container(
                                 padding: const EdgeInsets.all(6),
                                 decoration: BoxDecoration(
                                   color: color,
                                   shape: BoxShape.circle,
-                                  border: Border.all(color: Colors.white, width: 2),
+                                  border: Border.all(
+                                      color: Colors.white, width: 2),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.3),
+                                      color: Colors.black
+                                          .withValues(alpha: 0.3),
                                       blurRadius: 6,
                                       offset: const Offset(0, 2),
                                     ),
@@ -338,19 +421,22 @@ class _MapaScreenState extends State<MapaScreen> {
                 ),
 
                 // ============================================
-                // 📊 CONTADOR DE INCIDENTES (FUERA DEL MAPA)
+                // 📊 CONTADOR DE INCIDENTES (esquina inferior izquierda)
                 // ============================================
                 Positioned(
                   bottom: 20,
                   left: 20,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _modoSeleccion ? Colors.green.shade700 : Colors.blue.shade700,
+                      color: _modoSeleccion
+                          ? Colors.green.shade700
+                          : Colors.deepOrange.shade700,
                       borderRadius: BorderRadius.circular(20),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.2),
+                          color: Colors.black.withValues(alpha: 0.2),
                           blurRadius: 8,
                         ),
                       ],
@@ -368,6 +454,47 @@ class _MapaScreenState extends State<MapaScreen> {
                     ),
                   ),
                 ),
+
+                // ============================================
+                // 🔥 LEYENDA DEL HEATMAP (esquina inferior derecha)
+                // ============================================
+                if (!_modoSeleccion)
+                  Positioned(
+                    bottom: 20,
+                    right: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.15),
+                            blurRadius: 8,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            '🔥 Nivel de riesgo',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          _buildLeyendaItem(Colors.green, 'Bajo'),
+                          _buildLeyendaItem(Colors.yellow[700]!, 'Medio'),
+                          _buildLeyendaItem(Colors.orange, 'Alto'),
+                          _buildLeyendaItem(Colors.red, 'Muy alto'),
+                        ],
+                      ),
+                    ),
+                  ),
 
                 // ============================================
                 // 🟢 BOTÓN CONFIRMAR (solo en modo selección)
@@ -398,10 +525,38 @@ class _MapaScreenState extends State<MapaScreen> {
                   _mapController.move(_currentPosition!, 14.0);
                 }
               },
-              backgroundColor: Colors.blue,
-              child: const Icon(Icons.center_focus_strong, color: Colors.white),
+              backgroundColor: Colors.deepOrange,
+              child:
+                  const Icon(Icons.center_focus_strong, color: Colors.white),
             )
           : null,
+    );
+  }
+
+  // ============================================================
+  // 🎨 HELPER: ITEM DE LEYENDA
+  // ============================================================
+  Widget _buildLeyendaItem(Color color, String label) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.7),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: Colors.black87),
+          ),
+        ],
+      ),
     );
   }
 }
