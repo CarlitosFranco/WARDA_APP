@@ -30,12 +30,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 182, 217, 240),
+      // ✅ Sin color hardcodeado
       appBar: AppBar(
         title: const Text('Crear cuenta'),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        foregroundColor: Colors.black87,
+        // ✅ Usa el color del tema
+        foregroundColor: theme.colorScheme.onSurface,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -49,7 +50,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✅ LOGO DE WARDA (más pequeño para dejar espacio al formulario)
+                // LOGO DE WARDA
                 Center(
                   child: SizedBox(
                     width: 140,
@@ -75,7 +76,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     'Regístrate en WARDA',
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: theme.colorScheme.onSurface,
                     ),
                   ),
                 ),
@@ -84,7 +85,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: Text(
                     'Completa tus datos para comenzar',
                     style: theme.textTheme.bodyMedium?.copyWith(
-                      color: Colors.grey[700],
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.6),
                     ),
                   ),
                 ),
@@ -264,8 +266,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nombreController.dispose();
     _emailController.dispose();
     _telefonoController.dispose();
-    _passwordController.dispose();
     _confirmPasswordController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 }

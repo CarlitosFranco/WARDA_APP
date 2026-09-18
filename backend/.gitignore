@@ -15,3 +15,7 @@ Thumbs.db
 # Build
 dist/
 build/
+
+# Archivos subidos por usuarios (no subir a GitHub)
+uploads/*
+!uploads/.gitkeep

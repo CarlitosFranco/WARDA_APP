@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:warda/providers/auth_provider.dart';
 import 'package:warda/providers/reporte_provider.dart';
 import 'package:warda/routes/app_routes.dart';
 import 'package:warda/utils/helpers.dart';
@@ -16,7 +17,6 @@ class _ReportesScreenState extends State<ReportesScreen> {
   @override
   void initState() {
     super.initState();
-    // ✅ Usamos addPostFrameCallback para cargar después del primer build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _cargarReportes();
     });
@@ -24,8 +24,13 @@ class _ReportesScreenState extends State<ReportesScreen> {
 
   Future<void> _cargarReportes() async {
     final provider = Provider.of<ReporteProvider>(context, listen: false);
-    // TODO: Usar ID del usuario autenticado en lugar de 'invitado'
-    await provider.cargarReportes('invitado');
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+    // ✅ Obtener el ID del usuario autenticado
+    final userId = authProvider.usuarioActual?.id ?? 'invitado';
+
+    debugPrint('📋 Cargando reportes del usuario: $userId');
+    await provider.cargarReportes(userId);
   }
 
   @override
@@ -40,9 +45,30 @@ class _ReportesScreenState extends State<ReportesScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: () async {
+              await _cargarReportes();
+              if (context.mounted) {
+                Helpers.showSnackBar(
+                  context,
+                  '🔄 Reportes actualizados',
+                  color: Colors.blue,
+                );
+              }
+            },
+            tooltip: 'Actualizar',
+          ),
+          IconButton(
             icon: const Icon(Icons.add),
-            onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.crearReporte);
+            onPressed: () async {
+              final result = await Navigator.pushNamed(
+                context,
+                AppRoutes.crearReporte,
+              );
+              // Recargar si se creó un reporte
+              if (result == true && context.mounted) {
+                await _cargarReportes();
+              }
             },
             tooltip: 'Nuevo reporte',
           ),
@@ -77,71 +103,80 @@ class _ReportesScreenState extends State<ReportesScreen> {
                       const SizedBox(height: 24),
                       CustomButton(
                         text: 'Crear reporte',
-                        onPressed: () {
-                          Navigator.pushNamed(context, AppRoutes.crearReporte);
+                        onPressed: () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            AppRoutes.crearReporte,
+                          );
+                          if (result == true && context.mounted) {
+                            await _cargarReportes();
+                          }
                         },
                         width: 200,
                       ),
                     ],
                   ),
                 )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: reporteProvider.reportes.length,
-                  itemBuilder: (context, index) {
-                    final reporte = reporteProvider.reportes[index];
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: Helpers.getReporteColor(reporte.estado)
-                              .withOpacity(0.2),
-                          child: Icon(
-                            Icons.report,
-                            color: Helpers.getReporteColor(reporte.estado),
-                            size: 20,
-                          ),
+              : RefreshIndicator(
+                  onRefresh: _cargarReportes,
+                  child: ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: reporteProvider.reportes.length,
+                    itemBuilder: (context, index) {
+                      final reporte = reporteProvider.reportes[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        title: Text(
-                          reporte.titulo,
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                        subtitle: Text(
-                          '${reporte.tipo} • ${Helpers.formatRelativeDate(reporte.fecha)}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Helpers.getReporteColor(reporte.estado)
-                                .withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            reporte.estado,
-                            style: TextStyle(
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Helpers.getReporteColor(reporte.estado)
+                                .withValues(alpha: 0.2),
+                            child: Icon(
+                              Icons.report,
                               color: Helpers.getReporteColor(reporte.estado),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              size: 20,
                             ),
                           ),
+                          title: Text(
+                            reporte.titulo,
+                            style: const TextStyle(fontWeight: FontWeight.w600),
+                          ),
+                          subtitle: Text(
+                            '${reporte.tipo} • ${Helpers.formatRelativeDate(reporte.fecha)}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          trailing: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Helpers.getReporteColor(reporte.estado)
+                                  .withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              reporte.estado,
+                              style: TextStyle(
+                                color: Helpers.getReporteColor(reporte.estado),
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRoutes.detalle,
+                              arguments: reporte,
+                            );
+                          },
                         ),
-                        onTap: () {
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.detalle,
-                            arguments: reporte,
-                          );
-                        },
-                      ),
-                    );
-                  },
+                      );
+                    },
+                  ),
                 ),
     );
   }

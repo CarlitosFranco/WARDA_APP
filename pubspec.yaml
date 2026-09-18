@@ -24,6 +24,7 @@ dependencies:
 
   # Networking
   http: ^1.1.0
+  http_parser: ^4.0.2         # Para multipart (subir archivos)
 
   # Utilidades
   intl: ^0.18.1
@@ -36,6 +37,11 @@ dependencies:
 
   # ========== ENVÍO DE ALERTAS ==========
   url_launcher: ^6.2.5         # Para abrir WhatsApp / SMS
+
+  # ========== CÁMARA E IMÁGENES ==========
+  image_picker: ^1.1.2         # Cámara y galería
+  mime: ^1.0.5                 # Detectar tipo MIME de la imagen
+  cached_network_image: ^3.3.1 # Cachear imágenes de red (mejor rendimiento)
 
 dev_dependencies:
   flutter_test:

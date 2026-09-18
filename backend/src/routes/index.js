@@ -33,4 +33,9 @@ router.use('/reportes', require('./reporte.routes'));
 // ============================================================
 router.use('/contactos', require('./contacto.routes'));
 
+// ============================================================
+// 📤 UPLOADS (SUBIDA DE IMÁGENES)
+// ============================================================
+router.use('/uploads', require('./upload.routes'));
+
 module.exports = router;

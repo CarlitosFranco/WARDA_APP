@@ -1,13 +1,15 @@
+import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:warda/models/reporte_model.dart';
 import 'package:warda/providers/auth_provider.dart';
 import 'package:warda/providers/reporte_provider.dart';
+import 'package:warda/services/image_service.dart';
 import 'package:warda/widgets/custom_button.dart';
 import 'package:warda/widgets/custom_textfield.dart';
 import 'package:warda/utils/constants.dart';
 import 'package:warda/utils/helpers.dart';
-import 'dart:async';
 
 class CrearReporteScreen extends StatefulWidget {
   const CrearReporteScreen({super.key});
@@ -25,6 +27,12 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   double? _latitud;
   double? _longitud;
   bool _isLoading = false;
+
+  // ============================================================
+  // 📷 FOTOS
+  // ============================================================
+  final List<File> _fotosSeleccionadas = [];
+  static const int _maxFotos = 3;
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +65,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 ),
               ),
               const SizedBox(height: 24),
+
               // Título
               CustomTextField(
                 label: 'Título',
@@ -70,6 +79,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
               // Tipo
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
@@ -100,6 +110,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
               // Descripción
               CustomTextField(
                 label: 'Descripción',
@@ -117,6 +128,106 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 },
               ),
               const SizedBox(height: 16),
+
+              // ============================================================
+              // 📷 FOTOS
+              // ============================================================
+              Text(
+                '📷 Fotos (opcional, máximo $_maxFotos)',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Botones de cámara y galería
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _fotosSeleccionadas.length >= _maxFotos
+                          ? null
+                          : _tomarFoto,
+                      icon: const Icon(Icons.camera_alt),
+                      label: const Text('Cámara'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _fotosSeleccionadas.length >= _maxFotos
+                          ? null
+                          : _seleccionarDeGaleria,
+                      icon: const Icon(Icons.photo_library),
+                      label: const Text('Galería'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              // Vista previa de las fotos
+              if (_fotosSeleccionadas.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 100,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _fotosSeleccionadas.length,
+                    itemBuilder: (context, index) {
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: Stack(
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.file(
+                                _fotosSeleccionadas[index],
+                                width: 100,
+                                height: 100,
+                                fit: BoxFit.cover,
+                              ),
+                            ),
+                            Positioned(
+                              top: 4,
+                              right: 4,
+                              child: GestureDetector(
+                                onTap: () => _eliminarFoto(index),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4),
+                                  decoration: const BoxDecoration(
+                                    color: Colors.red,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 16),
+
               // Ubicación (dirección + coordenadas)
               Row(
                 children: [
@@ -149,7 +260,8 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 ],
               ),
               const SizedBox(height: 8),
-              // Mostrar latitud y longitud (informativas)
+
+              // Mostrar latitud y longitud
               Row(
                 children: [
                   Expanded(
@@ -172,6 +284,7 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
                 ],
               ),
               const SizedBox(height: 30),
+
               // Botones
               Row(
                 children: [
@@ -202,42 +315,109 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
   }
 
   // ============================================================
-  // 🗺️ ABRIR MAPA PARA SELECCIONAR UBICACIÓN
+  // 📷 TOMAR FOTO CON LA CÁMARA
   // ============================================================
-  Future<void> _seleccionarUbicacionEnMapa() async {
-    // Navegar al mapa en modo selección
-    final resultado = await Navigator.pushNamed(
-      context,
-      '/mapa',
-      arguments: true, // Activa modo selección
-    );
+  Future<void> _tomarFoto() async {
+    final foto = await ImageService.tomarFoto();
 
-    if (resultado != null && resultado is Map<String, double>) {
-      setState(() {
-        _latitud = resultado['latitud'];
-        _longitud = resultado['longitud'];
-        // Opcional: puedes usar geocodificación inversa para obtener dirección
-        // Por ahora, dejamos que el usuario escriba la dirección manualmente
-        _ubicacionController.text =
-            'Ubicación seleccionada (${_latitud!.toStringAsFixed(4)}, ${_longitud!.toStringAsFixed(4)})';
-      });
+    if (foto == null) {
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '📷 No se tomó ninguna foto',
+          color: Colors.grey,
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _fotosSeleccionadas.add(foto);
+    });
+
+    if (mounted) {
       Helpers.showSnackBar(
         context,
-        '📍 Ubicación seleccionada correctamente',
+        '✅ Foto agregada (${_fotosSeleccionadas.length}/$_maxFotos)',
         color: Colors.green,
       );
     }
   }
 
   // ============================================================
-  // 📤 CREAR REPORTE
+  // 🖼️ SELECCIONAR DE LA GALERÍA
+  // ============================================================
+  Future<void> _seleccionarDeGaleria() async {
+    final foto = await ImageService.seleccionarDeGaleria();
+
+    if (foto == null) {
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '🖼️ No se seleccionó ninguna imagen',
+          color: Colors.grey,
+        );
+      }
+      return;
+    }
+
+    setState(() {
+      _fotosSeleccionadas.add(foto);
+    });
+
+    if (mounted) {
+      Helpers.showSnackBar(
+        context,
+        '✅ Imagen agregada (${_fotosSeleccionadas.length}/$_maxFotos)',
+        color: Colors.green,
+      );
+    }
+  }
+
+  // ============================================================
+  // ❌ ELIMINAR FOTO
+  // ============================================================
+  void _eliminarFoto(int index) {
+    setState(() {
+      _fotosSeleccionadas.removeAt(index);
+    });
+  }
+
+  // ============================================================
+  // 🗺️ ABRIR MAPA PARA SELECCIONAR UBICACIÓN
+  // ============================================================
+  Future<void> _seleccionarUbicacionEnMapa() async {
+    final resultado = await Navigator.pushNamed(
+      context,
+      '/mapa',
+      arguments: true,
+    );
+
+    if (resultado != null && resultado is Map<String, double>) {
+      setState(() {
+        _latitud = resultado['latitud'];
+        _longitud = resultado['longitud'];
+        _ubicacionController.text =
+            'Ubicación seleccionada (${_latitud!.toStringAsFixed(4)}, ${_longitud!.toStringAsFixed(4)})';
+      });
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '📍 Ubicación seleccionada correctamente',
+          color: Colors.green,
+        );
+      }
+    }
+  }
+
+  // ============================================================
+  // 📤 CREAR REPORTE (con subida de fotos)
   // ============================================================
   Future<void> _crearReporte() async {
     if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    // Validar coordenadas (opcional pero recomendado)
     if (_latitud == null || _longitud == null) {
       Helpers.showSnackBar(
         context,
@@ -252,10 +432,40 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     final reporteProvider = Provider.of<ReporteProvider>(context, listen: false);
 
-    // Obtener ID del usuario (con fallback a invitado)
     final usuarioId = authProvider.usuarioActual?.id ??
         'invitado_${DateTime.now().millisecondsSinceEpoch}';
 
+    // 1️⃣ Subir fotos al backend (si hay)
+    List<String>? urlsFotos;
+    if (_fotosSeleccionadas.isNotEmpty) {
+      if (mounted) {
+        Helpers.showSnackBar(
+          context,
+          '📤 Subiendo ${_fotosSeleccionadas.length} foto(s)...',
+          color: Colors.blue,
+        );
+      }
+
+      final urls = await ImageService.subirMultiplesImagenes(
+        _fotosSeleccionadas,
+      );
+
+      if (urls.isEmpty && _fotosSeleccionadas.isNotEmpty) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          Helpers.showSnackBar(
+            context,
+            '❌ No se pudieron subir las fotos',
+            color: Colors.red,
+          );
+        }
+        return;
+      }
+
+      urlsFotos = urls;
+    }
+
+    // 2️⃣ Crear el reporte con las URLs
     final reporte = Reporte(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       titulo: _tituloController.text.trim(),
@@ -268,31 +478,29 @@ class _CrearReporteScreenState extends State<CrearReporteScreen> {
           : _ubicacionController.text.trim(),
       latitud: _latitud,
       longitud: _longitud,
-      imagenes: null,
+      imagenes: urlsFotos,
       usuarioId: usuarioId,
     );
 
     final success = await reporteProvider.crearReporte(reporte);
 
+    if (!mounted) return;
+
     setState(() => _isLoading = false);
 
     if (success) {
-      if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          '✅ Reporte creado exitosamente',
-          color: Colors.green,
-        );
-        Navigator.pop(context, true);
-      }
+      Helpers.showSnackBar(
+        context,
+        '✅ Reporte creado exitosamente',
+        color: Colors.green,
+      );
+      Navigator.pop(context, true);
     } else {
-      if (mounted) {
-        Helpers.showSnackBar(
-          context,
-          '❌ Error al crear el reporte: ${reporteProvider.error}',
-          color: Colors.red,
-        );
-      }
+      Helpers.showSnackBar(
+        context,
+        '❌ Error al crear el reporte: ${reporteProvider.error}',
+        color: Colors.red,
+      );
     }
   }
 

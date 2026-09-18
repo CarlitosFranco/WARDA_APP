@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:warda/providers/auth_provider.dart';
+import 'package:warda/providers/theme_provider.dart';
 import 'package:warda/routes/app_routes.dart';
 import 'package:warda/widgets/custom_button.dart';
 import 'package:warda/utils/helpers.dart';
@@ -12,6 +13,7 @@ class PerfilScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final authProvider = Provider.of<AuthProvider>(context);
+    final themeProvider = Provider.of<ThemeProvider>(context);
     final usuario = authProvider.usuarioActual;
 
     return Scaffold(
@@ -22,16 +24,15 @@ class PerfilScreen extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            // ✅ FOTO DE PERFIL (avatar con logo de WARDA por defecto)
+            // ✅ FOTO DE PERFIL (avatar con logo de WARDA)
             Center(
               child: Stack(
                 children: [
-                  // Avatar circular con el logo de WARDA
                   Container(
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: theme.colorScheme.surface,
                       shape: BoxShape.circle,
                       border: Border.all(
                         color: theme.colorScheme.primary.withValues(alpha: 0.3),
@@ -62,7 +63,6 @@ class PerfilScreen extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // Botón de cámara (para cambiar foto)
                   Positioned(
                     bottom: 0,
                     right: 0,
@@ -78,7 +78,10 @@ class PerfilScreen extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: theme.colorScheme.primary,
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
+                          border: Border.all(
+                            color: theme.colorScheme.surface,
+                            width: 2,
+                          ),
                         ),
                         child: const Icon(
                           Icons.camera_alt,
@@ -104,17 +107,17 @@ class PerfilScreen extends StatelessWidget {
             Text(
               usuario?.email ?? 'usuario@email.com',
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: Colors.grey[600],
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
 
-            // Teléfono (nuevo, para más contexto)
+            // Teléfono
             if (usuario?.telefono != null && usuario!.telefono.isNotEmpty) ...[
               const SizedBox(height: 4),
               Text(
                 usuario.telefono,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[500],
+                  color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 ),
               ),
             ],
@@ -166,13 +169,26 @@ class PerfilScreen extends StatelessWidget {
                     },
                   ),
                   const Divider(height: 1),
-                  _buildMenuItem(
-                    context,
-                    icon: Icons.dark_mode_outlined,
-                    title: 'Tema oscuro',
-                    onTap: () {
-                      Helpers.showSnackBar(
-                          context, 'Funcionalidad en desarrollo');
+
+                  // ✅ SWITCH FUNCIONAL DE MODO OSCURO
+                  SwitchListTile(
+                    secondary: Icon(
+                      themeProvider.isDarkMode
+                          ? Icons.dark_mode
+                          : Icons.dark_mode_outlined,
+                      color: theme.colorScheme.primary,
+                    ),
+                    title: const Text('Tema oscuro'),
+                    subtitle: Text(
+                      themeProvider.isDarkMode ? 'Activado' : 'Desactivado',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
+                      ),
+                    ),
+                    value: themeProvider.isDarkMode,
+                    onChanged: (bool value) {
+                      themeProvider.toggleTheme(value);
                     },
                   ),
                 ],
@@ -248,7 +264,7 @@ class PerfilScreen extends StatelessWidget {
               'WARDA v1.0.0',
               style: TextStyle(
                 fontSize: 12,
-                color: Colors.grey[500],
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
                 letterSpacing: 1,
               ),
             ),
@@ -296,7 +312,7 @@ class PerfilScreen extends StatelessWidget {
         Text(
           label,
           style: theme.textTheme.bodySmall?.copyWith(
-            color: Colors.grey[600],
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           ),
         ),
       ],

@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 
 const { testConnection } = require('./src/db/connection');
 const routes = require('./src/routes');
@@ -24,6 +25,11 @@ const PORT = process.env.PORT || 3000;
 app.use(cors()); // Permitir peticiones desde otros orígenes (Flutter)
 app.use(express.json({ limit: '10mb' })); // Parsear JSON
 app.use(express.urlencoded({ extended: true })); // Parsear formularios
+
+// ============================================================
+// 📁 SERVIR ARCHIVOS ESTÁTICOS (imágenes subidas)
+// ============================================================
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Logger simple de peticiones
 app.use((req, res, next) => {
@@ -47,6 +53,7 @@ app.get('/', (req, res) => {
       auth: '/api/auth',
       reportes: '/api/reportes',
       contactos: '/api/contactos',
+      uploads: '/api/uploads',
     },
   });
 });
@@ -77,6 +84,7 @@ const startServer = async () => {
     console.log('\n═══════════════════════════════════════════');
     console.log(`✅ Servidor corriendo en http://localhost:${PORT}`);
     console.log(`📚 Health check: http://localhost:${PORT}/api/health`);
+    console.log(`📤 Uploads: http://localhost:${PORT}/uploads`);
     console.log(`🌍 Modo: ${process.env.NODE_ENV || 'development'}`);
     console.log('═══════════════════════════════════════════\n');
   });

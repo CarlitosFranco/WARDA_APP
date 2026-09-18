@@ -25,7 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 182, 217, 240),
+      // ✅ Sin color hardcodeado: usa el del tema (claro/oscuro)
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -38,7 +38,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 Center(
                   child: Column(
                     children: [
-                      // ✅ LOGO DE WARDA (sin círculo, se ve completo)
+                      // LOGO DE WARDA
                       SizedBox(
                         width: 220,
                         height: 220,
@@ -59,14 +59,15 @@ class _LoginScreenState extends State<LoginScreen> {
                         'Bienvenido a WARDA',
                         style: theme.textTheme.headlineMedium?.copyWith(
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: theme.colorScheme.onSurface,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Inicia sesión para continuar',
                         style: theme.textTheme.bodyLarge?.copyWith(
-                          color: Colors.grey[700],
+                          color: theme.colorScheme.onSurface
+                              .withValues(alpha: 0.6),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -127,12 +128,13 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     );
                   },
-                  child: const Text(
+                  child: Text(
                     '🔑 Entrar como invitado',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
-                      color: Colors.grey,
+                      color: theme.colorScheme.onSurface
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                 ),

@@ -12,11 +12,31 @@
     <!-- ============================================ -->
     <uses-permission android:name="android.permission.INTERNET" />
     
+    <!-- ============================================ -->
+    <!-- 📷 PERMISOS PARA CÁMARA E IMÁGENES           -->
+    <!-- ============================================ -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    
+    <!-- Almacenamiento (Android 12 y anteriores) -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" 
+        android:maxSdkVersion="32" />
+    
+    <!-- Almacenamiento de imágenes (Android 13+) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    
+    <!-- Feature de cámara (no obligatorio) -->
+    <uses-feature 
+        android:name="android.hardware.camera" 
+        android:required="false" />
+    
     <application
         android:label="warda"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="true"
+        android:requestLegacyExternalStorage="true">
         
         <activity
             android:name=".MainActivity"
@@ -37,6 +57,20 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        
+        <!-- ============================================ -->
+        <!-- 📁 FILE PROVIDER (necesario para compartir archivos) -->
+        <!-- Obligatorio para Android 7+ (API 24+)       -->
+        <!-- ============================================ -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
         
         <meta-data
             android:name="flutterEmbedding"
